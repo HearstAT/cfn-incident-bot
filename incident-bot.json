@@ -1,0 +1,256 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Cloudformation IncidentBot: Linux Bot; v1.1",
+  "Parameters": {
+      "KeyName": {
+        "Description" : "Name of an existing EC2 KeyPair to enable SSH access to the instance",
+        "Type": "String",
+        "Default": ""
+      },
+      "HostedZone": {
+        "Type": "String",
+        "Default": "domain.com",
+        "Description": "must match a route53 hosted domain/zone"
+      },
+      "Subdomain": {
+        "Type": "String",
+        "Default": "incidentbot",
+        "Description": "subdomain to attach to hosted zone"
+      },
+      "InstanceType": {
+        "Description": "EC2 instance type",
+        "Type": "String",
+        "Default": ""
+      },
+      "SSHSecurityGroup" : {
+        "Description" : "Select Security Group for SSH Access",
+        "Type": "String",
+        "Default": ""
+      },
+      "VPC": {
+        "Description" : "Choose VPC to use",
+        "Type": "String",
+        "Default": ""
+     },
+     "UserDataScript": {
+       "Description" : "Enter URL for User Data script",
+       "Type": "String",
+       "Default": ""
+    },
+     "Subnet": {
+       "Description" : "Choose Subnet",
+       "Type": "String",
+       "Default": ""
+     }
+   },
+   "Mappings" : {
+     "AWSInstanceType2Arch" : {
+       "t1.micro"    : { "Arch" : "HVM64"  },
+       "t2.nano"     : { "Arch" : "HVM64"  },
+       "t2.micro"    : { "Arch" : "HVM64"  },
+       "t2.small"    : { "Arch" : "HVM64"  },
+       "t2.medium"   : { "Arch" : "HVM64"  },
+       "t2.large"    : { "Arch" : "HVM64"  },
+       "m1.small"    : { "Arch" : "HVM64"  },
+       "m1.medium"   : { "Arch" : "HVM64"  },
+       "m1.large"    : { "Arch" : "HVM64"  },
+       "m1.xlarge"   : { "Arch" : "HVM64"  },
+       "m2.xlarge"   : { "Arch" : "HVM64"  },
+       "m2.2xlarge"  : { "Arch" : "HVM64"  },
+       "m2.4xlarge"  : { "Arch" : "HVM64"  },
+       "m3.medium"   : { "Arch" : "HVM64"  },
+       "m3.large"    : { "Arch" : "HVM64"  },
+       "m3.xlarge"   : { "Arch" : "HVM64"  },
+       "m3.2xlarge"  : { "Arch" : "HVM64"  },
+       "m4.large"    : { "Arch" : "HVM64"  },
+       "m4.xlarge"   : { "Arch" : "HVM64"  },
+       "m4.2xlarge"  : { "Arch" : "HVM64"  },
+       "m4.4xlarge"  : { "Arch" : "HVM64"  },
+       "m4.10xlarge" : { "Arch" : "HVM64"  },
+       "c1.medium"   : { "Arch" : "HVM64"  },
+       "c1.xlarge"   : { "Arch" : "HVM64"  },
+       "c3.large"    : { "Arch" : "HVM64"  },
+       "c3.xlarge"   : { "Arch" : "HVM64"  },
+       "c3.2xlarge"  : { "Arch" : "HVM64"  },
+       "c3.4xlarge"  : { "Arch" : "HVM64"  },
+       "c3.8xlarge"  : { "Arch" : "HVM64"  },
+       "c4.large"    : { "Arch" : "HVM64"  },
+       "c4.xlarge"   : { "Arch" : "HVM64"  },
+       "c4.2xlarge"  : { "Arch" : "HVM64"  },
+       "c4.4xlarge"  : { "Arch" : "HVM64"  },
+       "c4.8xlarge"  : { "Arch" : "HVM64"  },
+       "g2.2xlarge"  : { "Arch" : "HVM64"  },
+       "g2.8xlarge"  : { "Arch" : "HVM64"  },
+       "r3.large"    : { "Arch" : "HVM64"  },
+       "r3.xlarge"   : { "Arch" : "HVM64"  },
+       "r3.2xlarge"  : { "Arch" : "HVM64"  },
+       "r3.4xlarge"  : { "Arch" : "HVM64"  },
+       "r3.8xlarge"  : { "Arch" : "HVM64"  },
+       "i2.xlarge"   : { "Arch" : "HVM64"  },
+       "i2.2xlarge"  : { "Arch" : "HVM64"  },
+       "i2.4xlarge"  : { "Arch" : "HVM64"  },
+       "i2.8xlarge"  : { "Arch" : "HVM64"  },
+       "d2.xlarge"   : { "Arch" : "HVM64"  },
+       "d2.2xlarge"  : { "Arch" : "HVM64"  },
+       "d2.4xlarge"  : { "Arch" : "HVM64"  },
+       "d2.8xlarge"  : { "Arch" : "HVM64"  },
+       "hi1.4xlarge" : { "Arch" : "HVM64"  },
+       "hs1.8xlarge" : { "Arch" : "HVM64"  },
+       "cr1.8xlarge" : { "Arch" : "HVM64"  },
+       "cc2.8xlarge" : { "Arch" : "HVM64"  }
+       },
+       "AWSRegionArch2AMI": {
+        "us-east-1"       : { "HVM64": "ami-0021766a" },
+        "us-west-2"       : { "HVM64": "ami-c94856a8" },
+        "us-west-1"       : { "HVM64": "ami-56f59e36" },
+        "eu-west-1"       : { "HVM64": "ami-a11dbfd2" },
+        "eu-central-1"    : { "HVM64": "ami-ffaab693" },
+        "ap-northeast-1"  : { "HVM64": "ami-20b98c4e" },
+        "ap-southeast-1"  : { "HVM64": "ami-06834165" },
+        "ap-southeast-2"  : { "HVM64": "ami-7bbee518" },
+        "sa-east-1"       : { "HVM64": "ami-08bd3a64" },
+        "cn-north-1"      : { "HVM64": "ami-3378b15e" }
+      }
+  },
+  "Resources": {
+    "IncidentBotUser" : {
+      "Type" : "AWS::IAM::User",
+      "Properties" : {
+        "Path": "/",
+        "Policies": [{
+          "PolicyName": "incidentbot-get",
+          "PolicyDocument": { "Statement":[{
+            "Effect":"Allow",
+            "Action": [
+              "s3:GetObject",
+              "s3:Put"
+            ],
+            "Resource":"*"
+            }]}
+          }]
+        }
+      },
+      "HostKeys" : {
+        "Type" : "AWS::IAM::AccessKey",
+        "Properties" : {
+          "UserName" : {"Ref": "IncidentBotUser"}
+      }
+    },
+    "IncidentBotSecurityGroup" : {
+      "Type" : "AWS::EC2::SecurityGroup",
+      "Properties" : {
+        "GroupDescription" : "Setup Ingress/Egress for Incident Bot",
+        "VpcId" : { "Ref" : "VPC" },
+        "SecurityGroupIngress" : [
+           { "IpProtocol" : "tcp", "FromPort" : "80",  "ToPort" : "80",  "CidrIp" : "0.0.0.0/0"} ,
+           { "IpProtocol" : "tcp", "FromPort" : "443", "ToPort" : "443", "CidrIp" : "0.0.0.0/0"} ],
+        "SecurityGroupEgress" : [
+           { "IpProtocol" : "tcp", "FromPort" : "80",  "ToPort" : "80",  "CidrIp" : "0.0.0.0/0"} ,
+           { "IpProtocol" : "tcp", "FromPort" : "443", "ToPort" : "443", "CidrIp" : "0.0.0.0/0"} ],
+        "Tags" : [
+           { "Key" : "Name", "Value" : "IncidentBot-Security-Group" }
+        ]
+      }
+    },
+    "ENI" : {
+      "Type" : "AWS::EC2::NetworkInterface",
+      "Properties" : {
+        "Tags": [ { "Key":"Name", "Value":"IncidentBot ENI" } ],
+        "Description": "Network Adapter for IncidentBot.",
+        "SourceDestCheck": "false",
+        "GroupSet": [
+          { "Ref": "IncidentBotSecurityGroup" },
+          { "Ref": "SSHSecurityGroup" }
+        ],
+        "SubnetId": { "Ref": "Subnet" }
+     }
+    },
+    "IncidentBotInstance": {
+      "Type": "AWS::EC2::Instance",
+      "Properties": {
+        "DisableApiTermination": "false",
+        "InstanceInitiatedShutdownBehavior": "stop",
+        "InstanceType": {"Ref": "InstanceType"},
+        "ImageId" : { "Fn::FindInMap" : [ "AWSRegionArch2AMI", { "Ref" : "AWS::Region" },
+                          { "Fn::FindInMap" : [ "AWSInstanceType2Arch", { "Ref" : "InstanceType" }, "Arch" ] } ] },
+        "KeyName": { "Ref": "KeyName" },
+        "Tags": [ { "Key": "Name", "Value": "IncidentBot-Bot" } ],
+        "NetworkInterfaces" : [ {"NetworkInterfaceId" : {"Ref" : "ENI"}, "DeviceIndex" : 0 } ],
+        "BlockDeviceMappings": [
+          {
+            "DeviceName": "/dev/sda1",
+            "Ebs": {
+              "VolumeType": "standard",
+              "DeleteOnTermination": "true",
+              "VolumeSize": "15"
+            }
+          }
+        ],
+        "UserData": {
+          "Fn::Base64" : { "Fn::Join" : ["", [
+                "#!/bin/bash -xev\n",
+                "apt-get update && apt-get -y upgrade \n",
+                "apt-get install -y wget curl python-setuptools python-pip git\n",
+                "# Helper function to set wait timer\n",
+                "function error_exit\n",
+                "{\n",
+                "  /usr/local/bin/cfn-signal -e 1 -r \"$1\" '", { "Ref" : "BotWaitHandle" }, "'\n",
+                "  exit 1\n",
+                "}\n",
+                "export -f error_exit\n",
+                "mkdir -p /user-init/ \n",
+                "curl -Sl ", { "Ref" : "UserDataScript" }," -o /user-init/userdata.sh\n",
+                "chmod +x /user-init/userdata.sh \n",
+                "export REGION=", {"Ref" : "AWS::Region" } ," \n ",
+                "export ACCESS_KEY=", {"Ref" : "AccessKey" } ," \n ",
+                "export SECRET_KEY=", {"Ref" : "SecretKey" } ," \n ",
+                "export S3BUCKET=", { "Ref" : "S3Bucket" },"\n",
+                "export HOSTNAME=", { "Fn::Join" : [ "", [ { "Ref" : "Subdomain" }, ".", { "Ref" : "HostedZone" } ] ] } ,"\n",
+                "/user-init/userdata.sh\n",
+                "# All is well so signal success and let CF know wait function is complete\n",
+                "/usr/local/bin/cfn-signal -e 0 -r \"Server setup complete\" '", { "Ref" : "BotWaitHandle" }, "'\n"
+              ]
+            ]
+          }
+        }
+      }
+    },
+    "IncidentBotEIP": {
+      "Type": "AWS::EC2::EIP",
+      "Properties": {
+        "InstanceId": { "Ref": "IncidentBotInstance" },
+        "Domain": "vpc"
+      }
+    },
+    "IncidentBotDNS" : {
+      "Type" : "AWS::Route53::RecordSet",
+      "Properties" : {
+        "HostedZoneName": { "Fn::Join" : [ "",[ { "Ref" : "HostedZone" } ,"." ] ] },
+        "Comment" : "DNS name for IncidentBot Bot",
+        "Name" : { "Fn::Join" : [ "", [ { "Ref" : "Subdomain" }, ".", { "Ref" : "HostedZone" }, "." ] ] },
+        "Type" : "A",
+        "TTL" : "60",
+        "ResourceRecords" : [
+           { "Ref": "IncidentBotEIP" }
+        ]
+      }
+    },
+   "BotWaitHandle" : {
+     "Type" : "AWS::CloudFormation::WaitConditionHandle"
+   },
+   "WaitCondition" : {
+     "Type" : "AWS::CloudFormation::WaitCondition",
+     "DependsOn" : "IncidentBotInstance",
+     "Properties" : {
+         "Handle" : { "Ref" : "BotWaitHandle" },
+         "Timeout" : "900"
+      }
+    }
+  },
+  "Outputs": {
+    "IncidentBotEIP": {
+      "Description": "EIP for IncidentBot Instace.",
+      "Value": { "Ref": "IncidentBotEIP" }
+    }
+  }
+}

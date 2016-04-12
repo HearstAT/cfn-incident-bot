@@ -130,10 +130,10 @@ source 'https://supermarket.chef.io'
 cookbook "${COOKBOOK}", git: 'https://github.com/HearstAT/cookbook-incident-bot.git'
 EOF
 
-cd ${CHEFDIR}
-
 # Install dependencies
-sudo su -l -c 'export BERKSHELF_PATH=${CHEFDIR} && berks vendor' || error_exit 'Failed to run berks vendor'
+sudo su -l -c "cd ${CHEFDIR} && export BERKSHELF_PATH=${CHEFDIR} && berks vendor" || error_exit 'Failed to run berks vendor'
+
+cd ${CHEFDIR}
 
 # create client.rb file so that Chef client can find its dependant cookbooks
 cat > "/var/chef/cookbooks/client.rb" <<EOF

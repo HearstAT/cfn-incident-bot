@@ -14,21 +14,31 @@ exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
 sudo apt-get install -y automake autotools-dev g++ git libcurl4-gnutls-dev libfuse-dev libssl-dev libxml2-dev make pkg-config
 
 # Install S3FS
-cd /tmp
-git clone https://github.com/s3fs-fuse/s3fs-fuse.git || error_exit 'Failed to clone s3fs-fuse'
-cd s3fs-fuse
-./autogen.sh
-./configure
-make
-sudo make install || error_exit 'Failed to make s3fs-fuse'
+
+# If directory exists, remove it
+if [ -d /tmp/s3fs-fuse ]; then
+  rm -rf /tmp/s3fs-fuse
+fi
+
+# If s3fs command doesn't exist, install
+if [ ! -f /usr/local/bin/s3fs ]; then
+  cd /tmp
+  git clone https://github.com/s3fs-fuse/s3fs-fuse.git || error_exit 'Failed to clone s3fs-fuse'
+  cd s3fs-fuse
+  ./autogen.sh
+  ./configure
+  make
+  sudo make install || error_exit 'Failed to make s3fs-fuse'
+fi
 
 # Set S3FS Credentials
 echo ${ACCESS_KEY}:${SECRET_KEY} > /etc/passwd-s3fs || error_exit 'Failed to set s3fs-fuse credentials'
 chmod 600 /etc/passwd-s3fs
 
 # Create S3FS Mount Directory
-mkdir /opt/redis
-
+if [ ! -d /opt/redis ]; then
+  mkdir /opt/redis
+fi
 # Mount S3 Bucket to Directory
 s3fs ${BUCKET} /opt/redis -o passwd_file=/etc/passwd-s3fs || error_exit 'Failed to mount s3fs'
 
@@ -50,16 +60,18 @@ aws configure set default.region ${REGION}
 aws configure set aws_access_key_id ${ACCESS_KEY}
 aws configure set aws_secret_access_key ${SECRET_KEY}
 
+CHEFDIR=/var/chef/cookbooks
+COOKBOOK='incident_bot'
+
 # Add chef repo
 curl -s https://packagecloud.io/install/repositories/chef/stable/script.deb.sh | bash
 apt-get update
 
 # setup cookbooks directory
-sudo mkdir -p /var/chef/cookbooks
+if [ ! -d ${CHEFDIR} ]; then
+  mkdir -p ${CHEFDIR}
+fi
 sudo chmod -R 777 /var/chef/cookbooks
-
-CHEFDIR=/var/chef/cookbooks
-COOKBOOK='incident_bot'
 
 # Copy over the cookbooks
 CDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"

@@ -1,4 +1,4 @@
-#!/bin/bash -xev
+#!/bin/bash -xv
 
 #### UserData Incident Bot Helper Script
 ### Script Params, exported in Cloudformation
@@ -40,10 +40,8 @@ if [ ! -d "/opt/redis" ]; then
   mkdir /opt/redis
 fi
 # Mount S3 Bucket to Directory
-S3FS_CHECK=$(cat /etc/mtab | grep 's3fs /opt/redis')
-if [ -z "${S3FS_CHECK}" ]; then
-  s3fs ${BUCKET} /opt/redis -o passwd_file=/etc/passwd-s3fs || error_exit 'Failed to mount s3fs'
-fi
+s3fs ${BUCKET} /opt/redis -o passwd_file=/etc/passwd-s3fs || error_exit 'Failed to mount s3fs'
+
 # Add chef repo
 curl -s https://packagecloud.io/install/repositories/chef/stable/script.deb.sh | bash
 

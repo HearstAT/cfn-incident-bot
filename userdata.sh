@@ -139,4 +139,4 @@ cookbook_path "${CHEFDIR}/berks-cookbooks"
 EOF
 
 # Run Chef
-sudo su -l -c 'cd ${chef-client -z -c "/var/chef/cookbooks/client.rb" -j "/var/chef/cookbooks/first-boot.json"' || error_exit 'Failed to run chef-client'
+sudo su -l -c 'chef-client -z -c "/var/chef/cookbooks/client.rb" -j "/var/chef/cookbooks/first-boot.json"' || error_exit 'Failed to run chef-client'

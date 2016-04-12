@@ -10,6 +10,28 @@
 
 exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
 
+# Install S3FS Dependencies
+sudo apt-get install -y automake autotools-dev g++ git libcurl4-gnutls-dev libfuse-dev libssl-dev libxml2-dev make pkg-config
+
+# Install S3FS
+cd /temp
+git clone https://github.com/s3fs-fuse/s3fs-fuse.git || error_exit 'Failed to clone s3fs-fuse'
+cd s3fs-fuse
+./autogen.sh
+./configure
+make
+sudo make install || error_exit 'Failed to make s3fs-fuse'
+
+# Set S3FS Credentials
+echo ${ACCESS_KEY}:${SECRET_KEY} > /etc/passwd-s3fs || error_exit 'Failed to set s3fs-fuse credentials'
+chmod 600 /etc/passwd-s3fs
+
+# Create S3FS Mount Directory
+mkdir /opt/redis
+
+# Mount S3 Bucket to Directory
+s3fs ${BUCKET} /opt/redis -o passwd_file=/etc/passwd-s3fs || error_exit 'Failed to mount s3fs'
+
 # Add chef repo
 curl -s https://packagecloud.io/install/repositories/chef/stable/script.deb.sh | bash
 
@@ -37,7 +59,7 @@ sudo mkdir -p /var/chef/cookbooks
 sudo chmod -R 777 /var/chef/cookbooks
 
 CHEFDIR=/var/chef/cookbooks
-COOKBOOK='incident-bot'
+COOKBOOK='incident_bot'
 
 # Copy over the cookbooks
 CDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
@@ -51,9 +73,9 @@ cat > "/var/chef/cookbooks/first-boot.json" << EOF
 {
   "${COOKBOOK}": {
     "aws": {
-      "redis_bucket": ${BUCKET},
-      "secret_key": ${SECRET_KEY},
-      "access_key": "${ACCESS_KEY}".
+      "redis_bucket": "${BUCKET}",
+      "secret_key": "${SECRET_KEY}",
+      "access_key": "${ACCESS_KEY}",
       "domain": "${DOMAIN}"
     },
     "name": "devbot",
@@ -94,9 +116,10 @@ source 'https://supermarket.chef.io'
 cookbook "${COOKBOOK}", git: 'https://github.com/HearstAT/cookbook-incident-bot.git'
 EOF
 
-cd $CHEFDIR
+cd ${CHEFDIR}
 
 # Install dependencies
+export BERKSHELF_PATH=${CHEFDIR}
 sudo su -l -c 'berks vendor' || error_exit 'Failed to run berks vendor'
 
 # create client.rb file so that Chef client can find its dependant cookbooks

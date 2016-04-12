@@ -40,8 +40,10 @@ if [ ! -d /opt/redis ]; then
   mkdir /opt/redis
 fi
 # Mount S3 Bucket to Directory
-s3fs ${BUCKET} /opt/redis -o passwd_file=/etc/passwd-s3fs || error_exit 'Failed to mount s3fs'
-
+S3FS_CHECK=$(cat /etc/mtab | grep 's3fs /opt/redis')
+if [ -z ${S3FS_CHECK} ]; then
+  s3fs ${BUCKET} /opt/redis -o passwd_file=/etc/passwd-s3fs || error_exit 'Failed to mount s3fs'
+fi
 # Add chef repo
 curl -s https://packagecloud.io/install/repositories/chef/stable/script.deb.sh | bash
 

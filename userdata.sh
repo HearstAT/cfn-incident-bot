@@ -119,8 +119,7 @@ EOF
 cd ${CHEFDIR}
 
 # Install dependencies
-export BERKSHELF_PATH=${CHEFDIR}
-sudo su -l -c 'berks vendor' || error_exit 'Failed to run berks vendor'
+sudo su -l -c 'export BERKSHELF_PATH=${CHEFDIR} && berks vendor' || error_exit 'Failed to run berks vendor'
 
 # create client.rb file so that Chef client can find its dependant cookbooks
 cat > "/var/chef/cookbooks/client.rb" <<EOF

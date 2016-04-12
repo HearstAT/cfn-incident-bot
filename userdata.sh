@@ -47,18 +47,51 @@ rm -f ${CHEFDIR}/${COOKBOOK}
 # Install Chef
 apt-get install -y chefdk || error_exit 'Failed to install chef'
 
-# Create first-boot.json
 cat > "/var/chef/cookbooks/first-boot.json" << EOF
 {
-   "run_list" :[
+  "${COOKBOOK}": {
+    "aws": {
+      "redis_bucket": ${BUCKET},
+      "secret_key": ${SECRET_KEY},
+      "access_key": "${ACCESS_KEY}".
+      "domain": "${DOMAIN}"
+    },
+    "name": "devbot",
+    "adapter": "slack",
+    "git_source": "https://github.com/github/hubot.git",
+    "version": "2.18.0",
+    "user": "hubot",
+    "group": "hubot",
+    "daemon": "runit",
+    "dependencies":{
+        "hubot-slack": ">= 3.4.2",
+        "hubot-redis-brain": "0.0.3",
+        "hubot-pager-me": "2.1.13",
+        "hubot-incident": "0.1.2"
+    },
+    "config": {
+        "HUBOT_SLACK_TOKEN": "${SLACK_TOKEN}",
+        "HUBOT_PAGERDUTY_API_KEY": "${PAGERDUTY_API_KEY}",
+        "HUBOT_PAGERDUTY_SERVICE_API_KEY": "${PAGERDUTY_SERVICE_API_KEY}",
+        "HUBOT_PAGERDUTY_SUBDOMAIN": "${PAGERDUTY_SUBDOMAIN}",
+        "HUBOT_PAGERDUTY_USER_ID": "${PAGERDUTY_USER_ID}",
+        "HUBOT_PAGERDUTY_SERVICES": "${PAGERDUTY_SERVICES}"
+    },
+    "external-scripts": [
+      "hubot-incident",
+      "hubot-pager-me",
+      "hubot-redis-brain"
+    ]
+  },
+  "run_list": [
     "recipe[${COOKBOOK}]"
-   ]
+  ]
 }
 EOF
 
 cat > "${CHEFDIR}/Berksfile" <<EOF
 source 'https://supermarket.chef.io'
-cookbook "${COOKBOOK}", path: "${CDIR}/${COOKBOOK}"
+cookbook "${COOKBOOK}", git: 'https://github.com/HearstAT/cookbook-incident-bot.git'
 EOF
 
 cd $CHEFDIR
@@ -72,4 +105,4 @@ cookbook_path File.join(Dir.pwd, 'berks-cookbooks')
 EOF
 
 # Run Chef
-sudo chef-client -z -c "/var/chef/cookbooks/client.rb" -j "/var/chef/cookbooks/first-boot.json"
+sudo su -l -c 'chef-client -z -c "/var/chef/cookbooks/client.rb" -j "/var/chef/cookbooks/first-boot.json"' || error_exit 'Failed to run chef-client'

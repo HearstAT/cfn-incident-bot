@@ -16,12 +16,12 @@ sudo apt-get install -y automake autotools-dev g++ git libcurl4-gnutls-dev libfu
 # Install S3FS
 
 # If directory exists, remove it
-if [ -d /tmp/s3fs-fuse ]; then
+if [ -d "/tmp/s3fs-fuse" ]; then
   rm -rf /tmp/s3fs-fuse
 fi
 
 # If s3fs command doesn't exist, install
-if [ ! -f /usr/local/bin/s3fs ]; then
+if [ ! -f "/usr/local/bin/s3fs" ]; then
   cd /tmp
   git clone https://github.com/s3fs-fuse/s3fs-fuse.git || error_exit 'Failed to clone s3fs-fuse'
   cd s3fs-fuse
@@ -36,12 +36,12 @@ echo ${ACCESS_KEY}:${SECRET_KEY} > /etc/passwd-s3fs || error_exit 'Failed to set
 chmod 600 /etc/passwd-s3fs
 
 # Create S3FS Mount Directory
-if [ ! -d /opt/redis ]; then
+if [ ! -d "/opt/redis" ]; then
   mkdir /opt/redis
 fi
 # Mount S3 Bucket to Directory
 S3FS_CHECK=$(cat /etc/mtab | grep 's3fs /opt/redis')
-if [ -z ${S3FS_CHECK} ]; then
+if [ -z "${S3FS_CHECK}" ]; then
   s3fs ${BUCKET} /opt/redis -o passwd_file=/etc/passwd-s3fs || error_exit 'Failed to mount s3fs'
 fi
 # Add chef repo
@@ -133,12 +133,10 @@ EOF
 # Install dependencies
 sudo su -l -c "cd ${CHEFDIR} && export BERKSHELF_PATH=${CHEFDIR} && berks vendor" || error_exit 'Failed to run berks vendor'
 
-cd ${CHEFDIR}
-
 # create client.rb file so that Chef client can find its dependant cookbooks
 cat > "/var/chef/cookbooks/client.rb" <<EOF
-cookbook_path File.join(Dir.pwd, 'berks-cookbooks')
+cookbook_path "${CHEFDIR}/berks-cookbooks"
 EOF
 
 # Run Chef
-sudo su -l -c 'chef-client -z -c "/var/chef/cookbooks/client.rb" -j "/var/chef/cookbooks/first-boot.json"' || error_exit 'Failed to run chef-client'
+sudo su -l -c 'cd ${chef-client -z -c "/var/chef/cookbooks/client.rb" -j "/var/chef/cookbooks/first-boot.json"' || error_exit 'Failed to run chef-client'

@@ -115,7 +115,7 @@ cat > "/var/chef/cookbooks/first-boot.json" << EOF
       "hubot-redis-brain"
     ],
     "letsencrypt": {
-      "contanct": "mailto:${EMAIL}"
+      "contact": "mailto:${EMAIL}"
     }
   },
   "run_list": [

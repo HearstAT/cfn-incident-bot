@@ -55,8 +55,18 @@
      "Type": "String",
      "Default": ""
     },
+    "ENVPagerDutyRoom": {
+     "Description" : "Enter Pagerduty Room you want webhook messages in (Optional)",
+     "Type": "String",
+     "Default": ""
+    },
     "ENVPagerDutyServices": {
      "Description" : "Enter Pagerduty Services ID's in a comma separated list (Optional)",
+     "Type": "String",
+     "Default": ""
+    },
+    "ContactEmail": {
+     "Description" : "Enter email to be notified for auto-generated certs",
      "Type": "String",
      "Default": ""
     },
@@ -293,7 +303,9 @@
                 "export PAGERDUTY_SERVICE_API_KEY=", { "Ref" : "ENVPagerDutyServiceKey" },"\n",
                 "export PAGERDUTY_SUBDOMAIN=", { "Ref" : "ENVPagerDutySubDomain" },"\n",
                 "export PAGERDUTY_USER_ID=", { "Ref" : "ENVPagerDutyUserID" },"\n",
+                "export PAGERDUTY_ROOM=", { "Ref" : "ENVPagerDutyRoom" },"\n",
                 "export PAGERDUTY_SERVICES=", { "Ref" : "ENVPagerDutyServices" },"\n",
+                "export EMAIL=", { "Ref" : "ContactEmail" },"\n",
                 "export HOSTNAME=", { "Fn::Join" : [ "", [ { "Ref" : "Subdomain" }, ".", { "Ref" : "HostedZone" } ] ] } ,"\n",
                 "/user-init/userdata.sh\n",
                 "# All is well so signal success and let CF know wait function is complete\n",

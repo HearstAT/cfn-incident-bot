@@ -40,7 +40,7 @@ if [ ! -d "/opt/redis" ]; then
   mkdir /opt/redis
 fi
 # Mount S3 Bucket to Directory
-s3fs ${BUCKET} /opt/redis -o passwd_file=/etc/passwd-s3fs || error_exit 'Failed to mount s3fs'
+s3fs -o allow_other -o umask=0002 -o passwd_file=/etc/passwd-s3fs ${BUCKET} /opt/redis || error_exit 'Failed to mount s3fs'
 
 # Add chef repo
 curl -s https://packagecloud.io/install/repositories/chef/stable/script.deb.sh | bash
@@ -97,25 +97,26 @@ cat > "/var/chef/cookbooks/first-boot.json" << EOF
     "user": "hubot",
     "group": "hubot",
     "daemon": "runit",
-    "dependencies":{
-        "hubot-slack": ">= 3.4.2",
-        "hubot-redis-brain": "0.0.3",
-        "hubot-pager-me": "2.1.13",
-        "hubot-incident": "0.1.2"
-    },
     "config": {
         "HUBOT_SLACK_TOKEN": "${SLACK_TOKEN}",
         "HUBOT_PAGERDUTY_API_KEY": "${PAGERDUTY_API_KEY}",
         "HUBOT_PAGERDUTY_SERVICE_API_KEY": "${PAGERDUTY_SERVICE_API_KEY}",
         "HUBOT_PAGERDUTY_SUBDOMAIN": "${PAGERDUTY_SUBDOMAIN}",
         "HUBOT_PAGERDUTY_USER_ID": "${PAGERDUTY_USER_ID}",
+        "HUBOT_PAGERDUTY_ROOM ": "${PAGERDUTY_ROOM}",
+        "HUBOT_PAGERDUTY_ENDPOINT": "/pagerduty",
         "HUBOT_PAGERDUTY_SERVICES": "${PAGERDUTY_SERVICES}"
     },
-    "external-scripts": [
+    "external_scripts": [
       "hubot-incident",
       "hubot-pager-me",
+      "hubot-diagnostics",
+      "hubot-help",
       "hubot-redis-brain"
-    ]
+    ],
+    "letsencrypt": {
+      "contanct": "mailto:${EMAIL}"
+    }
   },
   "run_list": [
     "recipe[${COOKBOOK}]"

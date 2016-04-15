@@ -12,10 +12,10 @@
       "Default": "domain.com",
       "Description": "must match a route53 hosted domain/zone"
     },
-    "Subdomain": {
+    "BotName": {
       "Type": "String",
       "Default": "incidentbot",
-      "Description": "subdomain to attach to hosted zone"
+      "Description": "Sets both the Bot Name and Subdomain to attach to hosted zone"
     },
     "SSHSecurityGroup" : {
       "Description" : "Select Security Group for SSH Access",
@@ -26,6 +26,18 @@
       "Description" : "Choose VPC to use",
       "Type" : "AWS::EC2::VPC::Id",
       "Default": ""
+    },
+    "Daemon": {
+      "Description" : "Choose which daemon controller you wish to use",
+      "Type" : "String",
+      "Default": "runit",
+      "AllowedValues": ["runit", "supervisor"]
+    },
+    "Environment": {
+      "Description" : "Choose which environent you want to enable for Letsencrypt Certs",
+      "Type" : "String",
+      "Default": "production",
+      "AllowedValues": ["production", "stage"]
     },
     "ENVSlackToken": {
      "Description" : "Enter Slack HUBOT API Token",
@@ -74,6 +86,16 @@
       "Description" : "Enter URL for User Data script",
       "Type": "String",
       "Default": "https://raw.githubusercontent.com/HearstAT/cfn-incident-bot/master/userdata.sh"
+    },
+    "Cookbook": {
+      "Description" : "Enter Cookbook Name",
+      "Type": "String",
+      "Default": "incident_bot"
+    },
+    "CookbookGit": {
+      "Description" : "Enter HTTPS Git Clone URL for Cookbook",
+      "Type": "String",
+      "Default": "https://github.com/HearstAT/cookbook-incident-bot.git"
     },
     "Subnet": {
       "Description" : "Choose Subnet",
@@ -125,6 +147,58 @@
         "ConstraintDescription": "must be a valid EC2 instance type."
     }
    },
+  "Metadata" : {
+    "AWS::CloudFormation::Interface" : {
+      "ParameterGroups" : [
+          {
+              "Label" : {"default": "Instance & Network Configuration"},
+              "Parameters" : ["InstanceType", "KeyName", "VPC", "SSHSecurityGroup", "Subnet", "HostedZone"]
+          },
+          {
+              "Label" : {"default": "Slack Configuration"},
+              "Parameters" : ["ENVSlackToken"]
+          },
+          {
+              "Label" : {"default": "Pagerduty Configuration"},
+              "Parameters" : ["ENVPagerDutyAPIKey", "ENVPagerDutyServiceKey", "ENVPagerDutySubDomain", "ENVPagerDutyUserID", "ENVPagerDutyRoom", "ENVPagerDutyServices"]
+          },
+          {
+              "Label" : {"default": "Bot Configuration"},
+              "Parameters" : ["BotName", "Daemon"]
+          },
+          {
+              "Label" : {"default": "External Build Items"},
+              "Parameters" : ["Cookbook", "CookbookGit", "UserDataScript"]
+          },
+          {
+              "Label" : {"default": "Letsencrypt Configuration (SSL)"},
+              "Parameters" : ["Environment", "ContactEmail"]
+          }
+      ],
+      "ParameterLabels" : {
+        "InstanceType": {"default": "Pick a Server Size/Flavor:"},
+        "KeyName": {"default": "Pick a default Key Pair for Access:"},
+        "VPC": {"default": "Pick VPC to Build Instance In:"},
+        "SSHSecurityGroup": {"default": "Pick Security Group for SSH Access:"},
+        "Subnet": {"default": "Pick Subnet to Build Instance In:"},
+        "HostedZone": {"default": "Enter Route53 Domain:"},
+        "ENVSlackToken": {"default": "Enter Slack API Token:"},
+        "ENVPagerDutyAPIKey": {"default": "Enter Pager Duty API Key:"},
+        "ENVPagerDutyServiceKey": {"default": "Enter Service API Key:"},
+        "ENVPagerDutySubDomain": {"default": "Enter Pager Duty Subdomain:"},
+        "ENVPagerDutyUserID": {"default": "Enter Pager Duty User ID:"},
+        "ENVPagerDutyRoom": {"default": "Enter Slack Room for Pager Duty Alerts:"},
+        "ENVPagerDutyServices": {"default": "Enter Pager Duty Services (For Restriction):"},
+        "BotName": {"default": "Enter name for Bot:"},
+        "Daemon": {"default": "Pick Bot Service Daemon:"},
+        "Cookbook": {"default": "Enter Cookbook Name (If different):"},
+        "CookbookGit": {"default": "Enter Cookbook Git Clone URL (If different):"},
+        "UserDataScript": {"default": "Enter User Data Script URL (If different):"},
+        "Environment": {"default": "Pick Cert Type:"},
+        "ContactEmail": {"default": "Enter Email for Cert Notices:"}
+      }
+    }
+  },
    "Mappings" : {
      "AWSInstanceType2Arch" : {
        "t2.nano"     : { "Arch" : "HVM64"  },
@@ -195,6 +269,13 @@
       }
   },
   "Resources": {
+    "BotBucket" : {
+      "Type" : "AWS::S3::Bucket",
+      "DeletionPolicy" : "Retain",
+      "Properties" : {
+        "AccessControl" : "Private"
+      }
+    },
     "IncidentBotUser" : {
       "Type" : "AWS::IAM::User",
       "Properties" : {
@@ -210,7 +291,7 @@
               "s3:PutObjectAcl",
               "s3:List*"
             ],
-            "Resource":"*"
+            "Resource": { "Fn::Join" : [ "", [ "arn:aws:s3:::", { "Ref" : "BotBucket" }, "/*" ] ] }
             }]}
           }]
         }
@@ -219,13 +300,6 @@
         "Type" : "AWS::IAM::AccessKey",
         "Properties" : {
           "UserName" : {"Ref": "IncidentBotUser"}
-      }
-    },
-    "BotBucket" : {
-      "Type" : "AWS::S3::Bucket",
-      "DeletionPolicy" : "Retain",
-      "Properties" : {
-        "AccessControl" : "Private"
       }
     },
     "IncidentBotSecurityGroup" : {
@@ -293,11 +367,11 @@
                 "mkdir -p /user-init/ \n",
                 "curl -Sl ", { "Ref" : "UserDataScript" }," -o /user-init/userdata.sh\n",
                 "chmod +x /user-init/userdata.sh \n",
-                "export REGION=", {"Ref" : "AWS::Region" } ," \n ",
                 "export ACCESS_KEY=", {"Ref" : "HostKeys" } ," \n ",
                 "export SECRET_KEY=", {"Fn::GetAtt" : [ "HostKeys", "SecretAccessKey" ]} ," \n ",
                 "export BUCKET=", { "Ref" : "BotBucket" },"\n",
                 "export DOMAIN=", { "Ref" : "HostedZone" },"\n",
+                "export ENVIRONMENT=", { "Ref" : "Environment" },"\n",
                 "export SLACK_TOKEN=", { "Ref" : "ENVSlackToken" },"\n",
                 "export PAGERDUTY_API_KEY=", { "Ref" : "ENVPagerDutyAPIKey" },"\n",
                 "export PAGERDUTY_SERVICE_API_KEY=", { "Ref" : "ENVPagerDutyServiceKey" },"\n",
@@ -305,8 +379,10 @@
                 "export PAGERDUTY_USER_ID=", { "Ref" : "ENVPagerDutyUserID" },"\n",
                 "export PAGERDUTY_ROOM=", { "Ref" : "ENVPagerDutyRoom" },"\n",
                 "export PAGERDUTY_SERVICES=", { "Ref" : "ENVPagerDutyServices" },"\n",
-                "export EMAIL=", { "Ref" : "ContactEmail" },"\n",
-                "export HOSTNAME=", { "Fn::Join" : [ "", [ { "Ref" : "Subdomain" }, ".", { "Ref" : "HostedZone" } ] ] } ,"\n",
+                "export LE_EMAIL=", { "Ref" : "ContactEmail" },"\n",
+                "export COOKBOOK=", { "Ref" : "Cookbook" },"\n",
+                "export COOKBOOK_GIT=", { "Ref" : "CookbookGit" },"\n",
+                "export HOSTNAME=", { "Fn::Join" : [ "", [ { "Ref" : "BotName" }, ".", { "Ref" : "HostedZone" } ] ] } ,"\n",
                 "/user-init/userdata.sh\n",
                 "# All is well so signal success and let CF know wait function is complete\n",
                 "/usr/local/bin/cfn-signal -e 0 -r \"Server setup complete\" '", { "Ref" : "BotWaitHandle" }, "'\n"
@@ -328,7 +404,7 @@
       "Properties" : {
         "HostedZoneName": { "Fn::Join" : [ "",[ { "Ref" : "HostedZone" } ,"." ] ] },
         "Comment" : "DNS name for IncidentBot Bot",
-        "Name" : { "Fn::Join" : [ "", [ { "Ref" : "Subdomain" }, ".", { "Ref" : "HostedZone" }, "." ] ] },
+        "Name" : { "Fn::Join" : [ "", [ { "Ref" : "BotName" }, ".", { "Ref" : "HostedZone" }, "." ] ] },
         "Type" : "A",
         "TTL" : "60",
         "ResourceRecords" : [
@@ -350,8 +426,12 @@
   },
   "Outputs": {
     "IncidentBotEIP": {
-      "Description": "EIP for IncidentBot Instace.",
+      "Description": "EIP for IncidentBot Instance.",
       "Value": { "Ref": "IncidentBotEIP" }
+    },
+    "IncidentBotEndpoint": {
+      "Description": "Endpoint for the incident bot Pagerduty Webhook.",
+      "Value": { "Fn::Join" : [ "", [ { "Ref" : "BotName" }, ".", { "Ref" : "HostedZone" }, "/hubot/pagerduty" ] ] }
     }
   }
 }

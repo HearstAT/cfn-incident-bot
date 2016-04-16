@@ -371,6 +371,7 @@
                 "export SECRET_KEY=", {"Fn::GetAtt" : [ "HostKeys", "SecretAccessKey" ]} ," \n ",
                 "export BUCKET=", { "Ref" : "BotBucket" },"\n",
                 "export DOMAIN=", { "Ref" : "HostedZone" },"\n",
+                "export DAEMON=", { "Ref" : "Daemon" },"\n",
                 "export ENVIRONMENT=", { "Ref" : "Environment" },"\n",
                 "export SLACK_TOKEN=", { "Ref" : "ENVSlackToken" },"\n",
                 "export PAGERDUTY_API_KEY=", { "Ref" : "ENVPagerDutyAPIKey" },"\n",

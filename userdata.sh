@@ -144,6 +144,8 @@ EOF
 sudo su -l -c "cd ${CHEFDIR} && export BERKSHELF_PATH=${CHEFDIR} && berks vendor" || error_exit 'Failed to run berks vendor'
 
 # Create client.rb
+mkdir -p /etc/chef
+
 cat > "/etc/chef/client.rb" <<EOF
 cookbook_path "${CHEFDIR}/berks-cookbooks"
 json_attribs "${CHEFDIR}/cfn.json"

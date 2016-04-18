@@ -269,14 +269,30 @@
       }
   },
   "Resources": {
-    "BotBucket" : {
-      "Type" : "AWS::S3::Bucket",
-      "DeletionPolicy" : "Retain",
-      "Properties" : {
-        "AccessControl" : "Private"
-      }
-    },
-    "IncidentBotUser" : {
+     "BotBucket" : {
+        "Type" : "AWS::S3::Bucket",
+        "DeletionPolicy" : "Retain",
+        "Properties" : {
+            "AccessControl" : "Private"
+        }
+     },
+     "BotRole": {
+        "Type": "AWS::IAM::Role",
+        "Properties": {
+           "AssumeRolePolicyDocument": {
+              "Version" : "2012-10-17",
+              "Statement": [ {
+                 "Effect": "Allow",
+                 "Principal": {
+                    "Service": [ "ec2.amazonaws.com" ]
+                 },
+                 "Action": [ "sts:AssumeRole" ]
+              } ]
+           },
+           "Path": "/"
+        }
+     },
+     "BotUser" : {
       "Type" : "AWS::IAM::User",
       "Properties" : {
         "Path": "/",
@@ -291,16 +307,51 @@
               "s3:PutObjectAcl",
               "s3:List*"
             ],
-            "Resource": { "Fn::Join" : [ "", [ "arn:aws:s3:::", { "Ref" : "BotBucket" }, "/*" ] ] }
+            "Resource":"*"
             }]}
           }]
         }
-      },
-      "HostKeys" : {
+     },
+     "RolePolicies": {
+        "Type": "AWS::IAM::Policy",
+        "Properties": {
+          "PolicyName": "bot-s3",
+          "PolicyDocument": {
+            "Version" : "2012-10-17",
+            "Statement":[ {
+            "Effect":"Allow",
+            "Action": [
+              "s3:GetObject",
+              "s3:Put",
+              "s3:PutObject",
+              "s3:PutObjectAcl",
+              "s3:List*"
+            ],
+            "Resource": { "Fn::Join" : [ "", [ "arn:aws:s3:::", { "Ref" : "BotBucket" }, "/*" ] ] }
+            } ]
+          },
+          "Roles": [ {
+             "Ref": "BotRole"
+          } ],
+          "Users": [ {
+             "Ref": "BotUser"
+          } ]
+      }
+     },
+     "BotInstanceProfile": {
+        "Type": "AWS::IAM::InstanceProfile",
+        "Properties": {
+           "Path": "/",
+           "Roles": [ {
+              "Ref": "BotRole"
+           } ]
+        }
+    },
+    "HostKeys" : {
         "Type" : "AWS::IAM::AccessKey",
         "Properties" : {
-          "UserName" : {"Ref": "IncidentBotUser"}
-      }
+          "UserName" : {"Ref": "BotUser"}
+        }
     },
     "IncidentBotSecurityGroup" : {
       "Type" : "AWS::EC2::SecurityGroup",
@@ -334,6 +385,7 @@
     "IncidentBotInstance": {
       "Type": "AWS::EC2::Instance",
       "Properties": {
+        "IamInstanceProfile": { "Ref": "BotInstanceProfile" },
         "DisableApiTermination": "false",
         "InstanceInitiatedShutdownBehavior": "stop",
         "InstanceType": {"Ref": "InstanceType"},

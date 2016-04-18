@@ -62,6 +62,9 @@ easy_install https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-
 hostname ${HOSTNAME} || error_exit 'Failed to set hostname'
 echo ${HOSTNAME} > /etc/hostname || error_exit 'Failed to set hostname'
 
+mkdir -p /etc/chef/ohai/hints || error_exit 'Failed to create ohai folder'
+touch /etc/chef/ohai/hints/ec2.json || error_exit 'Failed to create ec2 hint file'
+touch /etc/chef/ohai/hints/iam.json || error_exit 'Failed to create iam hint file'
 
 # Add chef repo
 curl -s https://packagecloud.io/install/repositories/chef/stable/script.deb.sh | bash || error_exit 'Failed to add chef repo'
@@ -103,9 +106,7 @@ cat > "${CHEFDIR}/cfn.json" << EOF
 {
   "${COOKBOOK}": {
     "citadel": {
-        "bucket": "${BUCKET}",
-        "access_key_id": "${ACCESS_KEY}",
-        "secret_access_key": "${SECRET_KEY}"
+        "bucket": "${BUCKET}"
     },
     "aws": {
         "domain": "${DOMAIN}"

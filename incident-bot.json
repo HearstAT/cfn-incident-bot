@@ -160,7 +160,7 @@
           },
           {
               "Label" : {"default": "Pagerduty Configuration"},
-              "Parameters" : ["ENVPagerDutyAPIKey", "ENVPagerDutyServiceKey", "ENVPagerDutySubDomain", "ENVPagerDutyUserID", "ENVPagerDutyRoom", "ENVPagerDutyServices"]
+              "Parameters" : ["ENVPagerDutySubDomain", "ENVPagerDutyUserID", "ENVPagerDutyAPIKey", "ENVPagerDutyServiceKey", "ENVPagerDutyRoom", "ENVPagerDutyServices"]
           },
           {
               "Label" : {"default": "Bot Configuration"},

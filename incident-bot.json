@@ -435,6 +435,7 @@
                 "export LE_EMAIL=", { "Ref" : "ContactEmail" },"\n",
                 "export COOKBOOK=", { "Ref" : "Cookbook" },"\n",
                 "export COOKBOOK_GIT=", { "Ref" : "CookbookGit" },"\n",
+                "export BOT_NAME=", { "Ref" : "BotName" },"\n",
                 "export HOSTNAME=", { "Fn::Join" : [ "", [ { "Ref" : "BotName" }, ".", { "Ref" : "HostedZone" } ] ] } ,"\n",
                 "/user-init/userdata.sh\n",
                 "# All is well so signal success and let CF know wait function is complete\n",

@@ -15,12 +15,15 @@
 # ${PAGERDUTY_ROOM} = ENVPagerDutyRoom
 # ${PAGERDUTY_SERVICES} = ENVPagerDutyServices
 # ${LE_EMAIL} = ContactEmail
+# ${BOT_NAME} = ContactEmail
 ###
 
 exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
 
 S3DIR='/opt/bot-s3'
 CHEFDIR='/var/chef/cookbooks'
+CHEFS3='/opt/chefs3' # only needed for when not using chef-zero
+ZERO_ENABLED='true' # Locked to true for now
 
 # Install S3FS Dependencies
 sudo apt-get install -y automake autotools-dev g++ git libcurl4-gnutls-dev libfuse-dev libssl-dev libxml2-dev make pkg-config
@@ -54,6 +57,15 @@ fi
 
 # Mount S3 Bucket to Directory
 s3fs -o allow_other -o umask=000 -o passwd_file=/etc/passwd-s3fs ${BUCKET} ${S3DIR} || error_exit 'Failed to mount s3fs'
+
+if [ ${ZERO_ENABLED} == 'false' ]; then
+    # Create S3FS Mount Directory
+    if [ ! -d "${CHEFS3}" ]; then
+      mkdir ${CHEFS3}
+    fi
+
+    s3fs -o passwd_file=/etc/passwd-s3fs ${CHEF_BUCKET} ${CHEFS3} || error_exit 'Failed to mount chef s3'
+fi
 
 # Install cfn bootstraping tools
 easy_install https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz || error_exit 'Failed to install CFN Bootstrap Tools'
@@ -104,35 +116,35 @@ fi
 # Create json for CFN Params to Attributes
 cat > "${CHEFDIR}/cfn.json" << EOF
 {
-  "${COOKBOOK}": {
     "citadel": {
         "bucket": "${BUCKET}"
     },
-    "aws": {
-        "domain": "${DOMAIN}"
-    },
-    "redis": {
-        "dir": "${S3DIR}/redis"
-    },
-    "name": "${BOT_NAME}",
-    "adapter": "slack",
-    "git_source": "https://github.com/github/hubot.git",
-    "version": "2.18.0",
-    "daemon": "${DAEMON}",
-    "config": {
-        "HUBOT_PAGERDUTY_SUBDOMAIN": "${PAGERDUTY_SUBDOMAIN}",
-        "HUBOT_PAGERDUTY_ROOM": "${PAGERDUTY_ROOM}",
-        "HUBOT_PAGERDUTY_ENDPOINT": "/pagerduty",
-        "HUBOT_PAGERDUTY_SERVICES": "${PAGERDUTY_SERVICES}"
-    },
-    "letsencrypt": {
-        "endpoint": "${LE_ENDPOINT}",
-        "contact": "mailto:${LE_EMAIL}"
-    }
-  },
-  "run_list": [
-    "recipe[${COOKBOOK}]"
-  ]
+    "${COOKBOOK}": {
+        "aws": {
+            "domain": "${DOMAIN}"
+        },
+        "redis": {
+            "dir": "${S3DIR}/redis"
+        },
+        "name": "${BOT_NAME}",
+        "adapter": "slack",
+        "git_source": "https://github.com/github/hubot.git",
+        "version": "2.18.0",
+        "daemon": "${DAEMON}",
+        "config": {
+            "HUBOT_PAGERDUTY_SUBDOMAIN": "${PAGERDUTY_SUBDOMAIN}",
+            "HUBOT_PAGERDUTY_ROOM": "${PAGERDUTY_ROOM}",
+            "HUBOT_PAGERDUTY_ENDPOINT": "/pagerduty",
+            "HUBOT_PAGERDUTY_SERVICES": "${PAGERDUTY_SERVICES}"
+        },
+        "letsencrypt": {
+            "endpoint": "${LE_ENDPOINT}",
+            "contact": "mailto:${LE_EMAIL}"
+        }
+      },
+    "run_list": [
+        "recipe[${COOKBOOK}]"
+    ]
 }
 EOF
 
@@ -142,15 +154,30 @@ cookbook "${COOKBOOK}", git: 'https://github.com/HearstAT/cookbook-incident-bot.
 EOF
 
 # Install dependencies
-sudo su -l -c "cd ${CHEFDIR} && export BERKSHELF_PATH=${CHEFDIR} && berks vendor" || error_exit 'Failed to run berks vendor'
-
+if [ ${ZERO_ENABLED} == 'true' ]; then
+    sudo su -l -c "cd ${CHEFDIR} && export BERKSHELF_PATH=${CHEFDIR} && berks vendor" || error_exit 'Failed to run berks vendor'
+else
+    sudo su -l -c "berks install && berks upload" || error_exit 'Failed to run berks install'
+fi
 # Create client.rb
 mkdir -p /etc/chef
 
+if [ ${ZERO_ENABLED} == 'true' ]; then
 cat > "/etc/chef/client.rb" <<EOF
 cookbook_path "${CHEFDIR}/berks-cookbooks"
 json_attribs "${CHEFDIR}/cfn.json"
+chef_zero.enabled
+local_mode true
 EOF
+else
+cat > "/etc/chef/client.rb" <<EOF
+json_attribs "${CHEFDIR}/cfn.json"
+node_name "${BOT_NAME}-$(curl -sS http://169.254.169.254/latest/meta-data/instance-id)"
+validation_client_name "${CHEFGROUP}-validator"
+validation_key "${CHEFS3}/valdiation.pem"
+EOF
+fi
+
 
 # Run Chef
-sudo su -l -c 'chef-client -z -c "/etc/chef/client.rb"' || error_exit 'Failed to run chef-client'
+sudo su -l -c 'chef-client' || error_exit 'Failed to run chef-client'

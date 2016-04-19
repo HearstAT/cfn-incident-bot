@@ -414,7 +414,7 @@
                 "export COOKBOOK_BRANCH=", { "Ref" : "CookbookGitBranch" },"\n",
                 "export BOT_NAME=", { "Ref" : "BotName" },"\n",
                 "export HOSTNAME=", { "Fn::Join" : [ "", [ { "Ref" : "BotName" }, ".", { "Ref" : "HostedZone" } ] ] } ,"\n",
-                "${UDSCRIPT}\n",
+                "${UDSCRIPT} || error_exit 'User Data Script failed'\n",
                 "rm -f ${UDSCRIPT}\n",
                 "# All is well so signal success and let CF know wait function is complete\n",
                 "/usr/local/bin/cfn-signal -e 0 -r \"Server setup complete\" '", { "Ref" : "BotWaitHandle" }, "'\n"

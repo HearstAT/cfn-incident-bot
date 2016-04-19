@@ -56,9 +56,9 @@ if [ ! -d "${S3DIR}" ]; then
 fi
 
 # Mount S3 Bucket to Directory
-s3fs -o allow_other -o umask=000 -o iam_role=${IAM_ROLE} -o endpoint=${REGION} ${BUCKET} ${S3DIR} || error_exit 'Failed to mount s3fs'
+s3fs -o allow_other -o umask=000 -o use_cache=/tmp -o iam_role=${IAM_ROLE} -o endpoint=${REGION} ${BUCKET} ${S3DIR} || error_exit 'Failed to mount s3fs'
 
-echo -e "${BUCKET} ${S3DIR} fuse.s3fs rw,_netdev,allow_other,umask=0022,iam_role=${IAM_ROLE},endpoint=${REGION},retries=5,multireq_max=5 0 0" >> /etc/fstab || error_exit 'Failed to add mount info to fstab'
+echo -e "${BUCKET} ${S3DIR} fuse.s3fs rw,_netdev,allow_other,umask=0022,use_cache=/tmp,iam_role=${IAM_ROLE},endpoint=${REGION},retries=5,multireq_max=5 0 0" >> /etc/fstab || error_exit 'Failed to add mount info to fstab'
 
 if [ ${ZERO_ENABLED} == 'false' ]; then
     echo 'nothing to see here'
@@ -96,6 +96,8 @@ apt-get install -y chefdk || error_exit 'Failed to install chef'
 # Setup Citadel Items
 mkdir -p ${S3DIR}/pagerduty ${S3DIR}/slack ${S3DIR}/aws ${S3DIR}/redis
 
+set +x
+
 ## Pagerduty
 echo "${PAGERDUTY_API_KEY}" >> ${S3DIR}/pagerduty/api_key
 echo "${PAGERDUTY_SERVICE_API_KEY}" >> ${S3DIR}/pagerduty/service_key
@@ -104,6 +106,8 @@ echo "${PAGERDUTY_API_KEY}" >> ${S3DIR}/pagerduty/
 
 ## Slack
 echo "${SLACK_TOKEN}" >> ${S3DIR}/slack/api_key
+
+set -x
 
 if [ ${ENVIRONMENT} == 'production' ]; then
     LE_ENDPOINT='https://acme-v01.api.letsencrypt.org'
@@ -157,7 +161,6 @@ EOF
 
 cat > "${CHEFDIR}/Berksfile" <<EOF
 source 'https://supermarket.chef.io'
-cookbook "citadel", git: 'https://github.com/gavinheavyside/citadel.git', branch: 'metadata-service'
 cookbook "${COOKBOOK}", git: '${COOKBOOK_GIT}', branch: '${COOKBOOK_BRANCH}'
 EOF
 

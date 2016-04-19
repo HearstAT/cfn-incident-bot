@@ -411,7 +411,7 @@
                 "export LE_EMAIL=", { "Ref" : "ContactEmail" },"\n",
                 "export COOKBOOK=", { "Ref" : "Cookbook" },"\n",
                 "export COOKBOOK_GIT=", { "Ref" : "CookbookGit" },"\n",
-                "export COOKBOOK_BRANCH=", { "Ref" : "CookbookBranch" },"\n",
+                "export COOKBOOK_BRANCH=", { "Ref" : "CookbookGitBranch" },"\n",
                 "export BOT_NAME=", { "Ref" : "BotName" },"\n",
                 "export HOSTNAME=", { "Fn::Join" : [ "", [ { "Ref" : "BotName" }, ".", { "Ref" : "HostedZone" } ] ] } ,"\n",
                 "/user-init/userdata.sh\n",

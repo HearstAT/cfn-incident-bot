@@ -3,6 +3,7 @@
 #### UserData Incident Bot Helper Script
 ### Script Params, exported in Cloudformation
 # ${IAM_ROLE} == BotRole
+# ${REGION} = Region
 # ${BUCKET} = BotBucket
 # ${DOMAIN} = HostedZone
 # ${DAEMON} = Daemon
@@ -55,9 +56,9 @@ if [ ! -d "${S3DIR}" ]; then
 fi
 
 # Mount S3 Bucket to Directory
-s3fs -o allow_other -o umask=000 -o iam_role=${IAM_ROLE} ${BUCKET} ${S3DIR} || error_exit 'Failed to mount s3fs'
+s3fs -o allow_other -o umask=000 -o iam_role=${IAM_ROLE} -o endpoint=${REGION} ${BUCKET} ${S3DIR} || error_exit 'Failed to mount s3fs'
 
-echo -e "${BUCKET} ${S3DIR} fuse.s3fs rw,_netdev,allow_other,umask=0022,iam_role=${IAM_ROLE},retries=5,multireq_max=5 0 0\n" >> /etc/fstab
+echo -e "${BUCKET} ${S3DIR} fuse.s3fs rw,_netdev,allow_other,umask=0022,iam_role=${IAM_ROLE},endpoint=${REGION},retries=5,multireq_max=5 0 0" >> /etc/fstab
 
 if [ ${ZERO_ENABLED} == 'false' ]; then
     echo 'nothing to see here'
@@ -156,6 +157,7 @@ EOF
 
 cat > "${CHEFDIR}/Berksfile" <<EOF
 source 'https://supermarket.chef.io'
+cookbook "citadel", git: 'https://github.com/gavinheavyside/citadel.git', branch: 'metadata-service'
 cookbook "${COOKBOOK}", git: '${COOKBOOK_GIT}', branch: '${COOKBOOK_BRANCH}'
 EOF
 

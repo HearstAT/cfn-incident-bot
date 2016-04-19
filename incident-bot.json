@@ -34,7 +34,7 @@
       "AllowedValues": ["runit", "supervisor"]
     },
     "Environment": {
-      "Description" : "Choose which environent you want to enable for Letsencrypt Certs",
+      "Description" : "Choose which environment you want to enable for Letsencrypt Certs",
       "Type" : "String",
       "Default": "production",
       "AllowedValues": ["production", "stage"]
@@ -96,6 +96,11 @@
       "Description" : "Enter HTTPS Git Clone URL for Cookbook",
       "Type": "String",
       "Default": "https://github.com/HearstAT/cookbook-incident-bot.git"
+    },
+    "CookbookGitBranch": {
+      "Description" : "Enter Git Branch",
+      "Type": "String",
+      "Default": "master"
     },
     "Subnet": {
       "Description" : "Choose Subnet",
@@ -168,7 +173,7 @@
           },
           {
               "Label" : {"default": "External Build Items"},
-              "Parameters" : ["Cookbook", "CookbookGit", "UserDataScript"]
+              "Parameters" : ["Cookbook", "CookbookGit", "CookbookGitBranch", "UserDataScript"]
           },
           {
               "Label" : {"default": "Letsencrypt Configuration (SSL)"},
@@ -193,6 +198,7 @@
         "Daemon": {"default": "Pick Bot Service Daemon:"},
         "Cookbook": {"default": "Enter Cookbook Name (If different):"},
         "CookbookGit": {"default": "Enter Cookbook Git Clone URL (If different):"},
+        "CookbookBranch": {"default": "Enter Cookbook Git Branch to use (If different):"},
         "UserDataScript": {"default": "Enter User Data Script URL (If different):"},
         "Environment": {"default": "Pick Cert Type:"},
         "ContactEmail": {"default": "Enter Email for Cert Notices:"}
@@ -292,26 +298,6 @@
            "Path": "/"
         }
      },
-     "BotUser" : {
-      "Type" : "AWS::IAM::User",
-      "Properties" : {
-        "Path": "/",
-        "Policies": [{
-          "PolicyName": "incidentbot-get",
-          "PolicyDocument": { "Statement":[{
-            "Effect":"Allow",
-            "Action": [
-              "s3:GetObject",
-              "s3:Put",
-              "s3:PutObject",
-              "s3:PutObjectAcl",
-              "s3:List*"
-            ],
-            "Resource":"*"
-            }]}
-          }]
-        }
-     },
      "RolePolicies": {
         "Type": "AWS::IAM::Policy",
         "Properties": {
@@ -332,9 +318,6 @@
           },
           "Roles": [ {
              "Ref": "BotRole"
-          } ],
-          "Users": [ {
-             "Ref": "BotUser"
           } ]
       }
      },
@@ -345,12 +328,6 @@
            "Roles": [ {
               "Ref": "BotRole"
            } ]
-        }
-    },
-    "HostKeys" : {
-        "Type" : "AWS::IAM::AccessKey",
-        "Properties" : {
-          "UserName" : {"Ref": "BotUser"}
         }
     },
     "BotSecurityGroup" : {
@@ -419,8 +396,7 @@
                 "mkdir -p /user-init/ \n",
                 "curl -Sl ", { "Ref" : "UserDataScript" }," -o /user-init/userdata.sh\n",
                 "chmod +x /user-init/userdata.sh \n",
-                "export ACCESS_KEY=", {"Ref" : "HostKeys" } ," \n ",
-                "export SECRET_KEY=", {"Fn::GetAtt" : [ "HostKeys", "SecretAccessKey" ]} ," \n ",
+                "export IAM_ROLE=", {"Ref" : "BotRole" } ," \n ",
                 "export BUCKET=", { "Ref" : "BotBucket" },"\n",
                 "export DOMAIN=", { "Ref" : "HostedZone" },"\n",
                 "export DAEMON=", { "Ref" : "Daemon" },"\n",
@@ -435,6 +411,7 @@
                 "export LE_EMAIL=", { "Ref" : "ContactEmail" },"\n",
                 "export COOKBOOK=", { "Ref" : "Cookbook" },"\n",
                 "export COOKBOOK_GIT=", { "Ref" : "CookbookGit" },"\n",
+                "export COOKBOOK_BRANCH=", { "Ref" : "CookbookBranch" },"\n",
                 "export BOT_NAME=", { "Ref" : "BotName" },"\n",
                 "export HOSTNAME=", { "Fn::Join" : [ "", [ { "Ref" : "BotName" }, ".", { "Ref" : "HostedZone" } ] ] } ,"\n",
                 "/user-init/userdata.sh\n",
@@ -484,7 +461,7 @@
       "Value": { "Ref": "BotEIP" }
     },
     "BotEndpoint": {
-      "Description": "Endpoint for the incident bot Pagerduty Webhook.",
+      "Description": "Endpoint for the Incident Bot Pagerduty Webhook.",
       "Value": { "Fn::Join" : [ "", [ { "Ref" : "BotName" }, ".", { "Ref" : "HostedZone" }, "/pagerduty" ] ] }
     }
   }

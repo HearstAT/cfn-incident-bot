@@ -2,10 +2,10 @@
 
 #### UserData Incident Bot Helper Script
 ### Script Params, exported in Cloudformation
-# ${ACCESS_KEY} == HostKeys
-# ${SECRET_KEY} == {"Fn::GetAtt" : [ "HostKeys", "SecretAccessKey" ]}
-# ${HOSTNAME} == Nodename or Server URL
+# ${IAM_ROLE} == BotRole
 # ${BUCKET} = BotBucket
+# ${DOMAIN} = HostedZone
+# ${DAEMON} = Daemon
 # ${ENVIRONMENT} = Environment
 # ${SLACK_TOKEN} = ENVSlackToken
 # ${PAGERDUTY_API_KEY} = ENVPagerDutyAPIKey
@@ -15,7 +15,10 @@
 # ${PAGERDUTY_ROOM} = ENVPagerDutyRoom
 # ${PAGERDUTY_SERVICES} = ENVPagerDutyServices
 # ${LE_EMAIL} = ContactEmail
-# ${BOT_NAME} = ContactEmail
+# ${BOT_NAME} = BotName (Acts as both botname and subdomain)
+# ${COOKBOOK} = Cookbook
+# ${COOKBOOK_GIT} = CookbookGit
+# ${HOSTNAME} == Nodename or Server URL
 ###
 
 exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
@@ -46,25 +49,18 @@ if [ ! -f "/usr/local/bin/s3fs" ]; then
   sudo make install || error_exit 'Failed run make-install s3fs-fuse'
 fi
 
-# Set S3FS Credentials
-echo ${ACCESS_KEY}:${SECRET_KEY} > /etc/passwd-s3fs || error_exit 'Failed to set s3fs-fuse credentials'
-chmod 600 /etc/passwd-s3fs
-
 # Create S3FS Mount Directory
 if [ ! -d "${S3DIR}" ]; then
   mkdir ${S3DIR}
 fi
 
 # Mount S3 Bucket to Directory
-s3fs -o allow_other -o umask=000 -o passwd_file=/etc/passwd-s3fs ${BUCKET} ${S3DIR} || error_exit 'Failed to mount s3fs'
+s3fs -o allow_other -o umask=000 -o iam_role=${IAM_ROLE} ${BUCKET} ${S3DIR} || error_exit 'Failed to mount s3fs'
+
+echo -e "${BUCKET} ${S3DIR} fuse.s3fs rw,_netdev,allow_other,umask=0022,iam_role=${IAM_ROLE},retries=5,multireq_max=5 0 0\n" >> /etc/fstab
 
 if [ ${ZERO_ENABLED} == 'false' ]; then
-    # Create S3FS Mount Directory
-    if [ ! -d "${CHEFS3}" ]; then
-      mkdir ${CHEFS3}
-    fi
-
-    s3fs -o passwd_file=/etc/passwd-s3fs ${CHEF_BUCKET} ${CHEFS3} || error_exit 'Failed to mount chef s3'
+# Placeholder for code to acquire validation pem
 fi
 
 # Install cfn bootstraping tools
@@ -159,7 +155,7 @@ EOF
 
 cat > "${CHEFDIR}/Berksfile" <<EOF
 source 'https://supermarket.chef.io'
-cookbook "${COOKBOOK}", git: 'https://github.com/HearstAT/cookbook-incident-bot.git'
+cookbook "${COOKBOOK}", git: '${COOKBOOK_GIT}', branch: '${COOKBOOK_BRANCH}'
 EOF
 
 # Install dependencies

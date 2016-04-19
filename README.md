@@ -49,6 +49,7 @@ These are the things you will need in AWS prior to running the CFN Template
 # Troubleshooting
 Always check the log locations first!
 
+* User Data Script Log: /var/log/user-data.log
 * Bot Log Location: /var/log/bot/current
 * Redis Log Location (default): /var/log/redis/redis-server.log
 

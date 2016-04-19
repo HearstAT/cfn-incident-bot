@@ -113,7 +113,16 @@ else
     LE_ENDPOINT='https://acme-staging.api.letsencrypt.org'
 fi
 
-# Create json for CFN Params to Attributes
+
+if [ ${ZERO_ENABLED} == 'true' ]; then
+    RUN_TYPE='recipe'
+    RUN_ITEM=${COOKBOOK}
+else
+    RUN_TYPE='role'
+    RUN_ITEM=${ROLE}
+fi
+
+# Create json for CFN Params to Attributes and create local role file
 cat > "${CHEFDIR}/cfn.json" << EOF
 {
     "citadel": {
@@ -143,7 +152,7 @@ cat > "${CHEFDIR}/cfn.json" << EOF
         }
       },
     "run_list": [
-        "recipe[${COOKBOOK}]"
+        "${RUN_TYPE}[${RUN_ITEM}]"
     ]
 }
 EOF
@@ -177,7 +186,6 @@ validation_client_name "${CHEFGROUP}-validator"
 validation_key "${CHEFS3}/valdiation.pem"
 EOF
 fi
-
 
 # Run Chef
 sudo su -l -c 'chef-client' || error_exit 'Failed to run chef-client'

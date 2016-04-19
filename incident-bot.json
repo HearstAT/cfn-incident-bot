@@ -1,6 +1,6 @@
 {
   "AWSTemplateFormatVersion": "2010-09-09",
-  "Description": "Cloudformation IncidentBot: Linux Bot; v1.1",
+  "Description": "Cloudformation Hubot Template: Incident Bot Configuration ; v1.2",
   "Parameters": {
     "KeyName": {
       "Description" : "Name of an existing EC2 KeyPair to enable SSH access to the instance",

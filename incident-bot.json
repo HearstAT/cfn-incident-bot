@@ -313,7 +313,7 @@
             },
             {
                 "Effect":"Allow",
-                "Action": [ "s3:ListAllMyBuckets" ],
+                "Action": [ "s3:List*" ],
                 "Resource": "arn:aws:s3:::*"
             } ]
           },

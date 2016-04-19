@@ -396,6 +396,7 @@
                 "curl -Sl ", { "Ref" : "UserDataScript" }," -o /user-init/userdata.sh\n",
                 "chmod +x /user-init/userdata.sh \n",
                 "export IAM_ROLE=", {"Ref" : "BotRole" } ," \n ",
+                "export REGION=", {"Ref" : "AWS::Region" } ," \n ",
                 "export BUCKET=", { "Ref" : "BotBucket" },"\n",
                 "export DOMAIN=", { "Ref" : "HostedZone" },"\n",
                 "export DAEMON=", { "Ref" : "Daemon" },"\n",

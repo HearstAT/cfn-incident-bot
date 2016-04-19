@@ -159,7 +159,7 @@ EOF
 
 cat > "${CHEFDIR}/Berksfile" <<EOF
 source 'https://supermarket.chef.io'
-cookbook "${COOKBOOK}", git: 'https://github.com/HearstAT/cookbook-incident-bot.git', branch: "citadel"
+cookbook "${COOKBOOK}", git: 'https://github.com/HearstAT/cookbook-incident-bot.git'
 EOF
 
 # Install dependencies

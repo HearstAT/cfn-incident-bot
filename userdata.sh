@@ -60,7 +60,8 @@ s3fs -o allow_other -o umask=000 -o iam_role=${IAM_ROLE} ${BUCKET} ${S3DIR} || e
 echo -e "${BUCKET} ${S3DIR} fuse.s3fs rw,_netdev,allow_other,umask=0022,iam_role=${IAM_ROLE},retries=5,multireq_max=5 0 0\n" >> /etc/fstab
 
 if [ ${ZERO_ENABLED} == 'false' ]; then
-# Placeholder for code to acquire validation pem
+    echo 'nothing to see here'
+    # Placeholder for code to acquire validation pem
 fi
 
 # Install cfn bootstraping tools

@@ -32,7 +32,7 @@ These are the things you will need in AWS prior to running the CFN Template
 * VPC (There should be a default, unless you want a new one)
 * SSH Security Group; just something that allows you port 22 via TCP from your IP. Must also be a part of the VPC chose previously
 * Subnet, any will do as long as it belongs to the VPC and is routed to an Internet Gateway eventually
-* Account with the following capabilities: [AWS::IAM::AccessKey, AWS::IAM::InstanceProfile, AWS::IAM::Policy, AWS::IAM::Role, AWS::IAM::User]
+* Account with the following capabilities: [AWS::IAM::InstanceProfile, AWS::IAM::Policy, AWS::IAM::Role]
 
 # Usage
 

@@ -58,7 +58,7 @@ fi
 # Mount S3 Bucket to Directory
 s3fs -o allow_other -o umask=000 -o iam_role=${IAM_ROLE} -o endpoint=${REGION} ${BUCKET} ${S3DIR} || error_exit 'Failed to mount s3fs'
 
-echo -e "${BUCKET} ${S3DIR} fuse.s3fs rw,_netdev,allow_other,umask=0022,iam_role=${IAM_ROLE},endpoint=${REGION},retries=5,multireq_max=5 0 0" >> /etc/fstab
+echo -e "${BUCKET} ${S3DIR} fuse.s3fs rw,_netdev,allow_other,umask=0022,iam_role=${IAM_ROLE},endpoint=${REGION},retries=5,multireq_max=5 0 0" >> /etc/fstab || error_exit 'Failed to add mount info to fstab'
 
 if [ ${ZERO_ENABLED} == 'false' ]; then
     echo 'nothing to see here'
@@ -78,7 +78,7 @@ touch /etc/chef/ohai/hints/iam.json || error_exit 'Failed to create iam hint fil
 
 # Add chef repo
 curl -s https://packagecloud.io/install/repositories/chef/stable/script.deb.sh | bash || error_exit 'Failed to add chef repo'
-apt-get update
+apt-get update || error_exit 'Failed to run apt-get update'
 
 # setup cookbooks directory
 if [ ! -d ${CHEFDIR} ]; then

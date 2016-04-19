@@ -353,7 +353,7 @@
           "UserName" : {"Ref": "BotUser"}
         }
     },
-    "IncidentBotSecurityGroup" : {
+    "BotSecurityGroup" : {
       "Type" : "AWS::EC2::SecurityGroup",
       "Properties" : {
         "GroupDescription" : "Setup Ingress/Egress for Incident Bot",
@@ -365,24 +365,24 @@
            { "IpProtocol" : "tcp", "FromPort" : "80",  "ToPort" : "80",  "CidrIp" : "0.0.0.0/0"} ,
            { "IpProtocol" : "tcp", "FromPort" : "443", "ToPort" : "443", "CidrIp" : "0.0.0.0/0"} ],
         "Tags" : [
-           { "Key" : "Name", "Value" : "IncidentBot-Security-Group" }
+           { "Key" : "Name", "Value" : "Bot-Security-Group" }
         ]
       }
     },
     "ENI" : {
       "Type" : "AWS::EC2::NetworkInterface",
       "Properties" : {
-        "Tags": [ { "Key":"Name", "Value":"IncidentBot ENI" } ],
-        "Description": "Network Adapter for IncidentBot.",
+        "Tags": [ { "Key":"Name", "Value":"Bot ENI" } ],
+        "Description": "Network Adapter for Incident Bot.",
         "SourceDestCheck": "false",
         "GroupSet": [
-          { "Ref": "IncidentBotSecurityGroup" },
+          { "Ref": "BotSecurityGroup" },
           { "Ref": "SSHSecurityGroup" }
         ],
         "SubnetId": { "Ref": "Subnet" }
      }
     },
-    "IncidentBotInstance": {
+    "BotInstance": {
       "Type": "AWS::EC2::Instance",
       "Properties": {
         "IamInstanceProfile": { "Ref": "BotInstanceProfile" },
@@ -392,7 +392,7 @@
         "ImageId" : { "Fn::FindInMap" : [ "AWSRegionArch2AMI", { "Ref" : "AWS::Region" },
                           { "Fn::FindInMap" : [ "AWSInstanceType2Arch", { "Ref" : "InstanceType" }, "Arch" ] } ] },
         "KeyName": { "Ref": "KeyName" },
-        "Tags": [ { "Key": "Name", "Value": "IncidentBot-Bot" } ],
+        "Tags": [ { "Key": "Name", "Value": "Bot-Bot" } ],
         "NetworkInterfaces" : [ {"NetworkInterfaceId" : {"Ref" : "ENI"}, "DeviceIndex" : 0 } ],
         "BlockDeviceMappings": [
           {
@@ -446,23 +446,23 @@
         }
       }
     },
-    "IncidentBotEIP": {
+    "BotEIP": {
       "Type": "AWS::EC2::EIP",
       "Properties": {
-        "InstanceId": { "Ref": "IncidentBotInstance" },
+        "InstanceId": { "Ref": "BotInstance" },
         "Domain": "vpc"
       }
     },
-    "IncidentBotDNS" : {
+    "BotDNS" : {
       "Type" : "AWS::Route53::RecordSet",
       "Properties" : {
         "HostedZoneName": { "Fn::Join" : [ "",[ { "Ref" : "HostedZone" } ,"." ] ] },
-        "Comment" : "DNS name for IncidentBot Bot",
+        "Comment" : "DNS name for Bot Bot",
         "Name" : { "Fn::Join" : [ "", [ { "Ref" : "BotName" }, ".", { "Ref" : "HostedZone" }, "." ] ] },
         "Type" : "A",
         "TTL" : "60",
         "ResourceRecords" : [
-           { "Ref": "IncidentBotEIP" }
+           { "Ref": "BotEIP" }
         ]
       }
     },
@@ -471,7 +471,7 @@
    },
    "WaitCondition" : {
      "Type" : "AWS::CloudFormation::WaitCondition",
-     "DependsOn" : "IncidentBotInstance",
+     "DependsOn" : "BotInstance",
      "Properties" : {
          "Handle" : { "Ref" : "BotWaitHandle" },
          "Timeout" : "900"
@@ -479,13 +479,13 @@
     }
   },
   "Outputs": {
-    "IncidentBotEIP": {
-      "Description": "EIP for IncidentBot Instance.",
-      "Value": { "Ref": "IncidentBotEIP" }
+    "BotEIP": {
+      "Description": "EIP for Incident Bot Instance.",
+      "Value": { "Ref": "BotEIP" }
     },
-    "IncidentBotEndpoint": {
+    "BotEndpoint": {
       "Description": "Endpoint for the incident bot Pagerduty Webhook.",
-      "Value": { "Fn::Join" : [ "", [ { "Ref" : "BotName" }, ".", { "Ref" : "HostedZone" }, "/hubot/pagerduty" ] ] }
+      "Value": { "Fn::Join" : [ "", [ { "Ref" : "BotName" }, ".", { "Ref" : "HostedZone" }, "/pagerduty" ] ] }
     }
   }
 }

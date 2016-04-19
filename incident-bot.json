@@ -1,6 +1,6 @@
 {
   "AWSTemplateFormatVersion": "2010-09-09",
-  "Description": "Cloudformation Hubot Template: Incident Bot Configuration ; v1.2",
+  "Description": "Cloudformation Hubot Template: Incident Bot Configuration: v1.2",
   "Parameters": {
     "KeyName": {
       "Description" : "Name of an existing EC2 KeyPair to enable SSH access to the instance",
@@ -392,8 +392,9 @@
                 "  exit 1\n",
                 "}\n",
                 "export -f error_exit\n",
-                "curl -Sl ", { "Ref" : "UserDataScript" }," -o /tmp/userdata.sh\n",
-                "chmod +x /user-init/userdata.sh \n",
+                "UDSCRIPT='/tmp/userdata.sh'\n",
+                "curl -Sl ", { "Ref" : "UserDataScript" }," -o ${UDSCRIPT}\n",
+                "chmod +x ${UDSCRIPT} \n",
                 "export IAM_ROLE=", {"Ref" : "BotRole" } ," \n ",
                 "export REGION=", {"Ref" : "AWS::Region" } ," \n ",
                 "export BUCKET=", { "Ref" : "BotBucket" },"\n",
@@ -413,8 +414,8 @@
                 "export COOKBOOK_BRANCH=", { "Ref" : "CookbookGitBranch" },"\n",
                 "export BOT_NAME=", { "Ref" : "BotName" },"\n",
                 "export HOSTNAME=", { "Fn::Join" : [ "", [ { "Ref" : "BotName" }, ".", { "Ref" : "HostedZone" } ] ] } ,"\n",
-                "/tmp/userdata.sh\n",
-                "rm -f /tmp/userata.sh\n",
+                "${UDSCRIPT}\n",
+                "rm -f ${UDSCRIPT}\n",
                 "# All is well so signal success and let CF know wait function is complete\n",
                 "/usr/local/bin/cfn-signal -e 0 -r \"Server setup complete\" '", { "Ref" : "BotWaitHandle" }, "'\n"
               ]

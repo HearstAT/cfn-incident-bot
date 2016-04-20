@@ -1,6 +1,6 @@
 {
   "AWSTemplateFormatVersion": "2010-09-09",
-  "Description": "Cloudformation IncidentBot: Linux Bot; v1.1",
+  "Description": "Cloudformation Hubot Template: Incident Bot Configuration: v1.2",
   "Parameters": {
     "KeyName": {
       "Description" : "Name of an existing EC2 KeyPair to enable SSH access to the instance",
@@ -12,10 +12,10 @@
       "Default": "domain.com",
       "Description": "must match a route53 hosted domain/zone"
     },
-    "Subdomain": {
+    "BotName": {
       "Type": "String",
       "Default": "incidentbot",
-      "Description": "subdomain to attach to hosted zone"
+      "Description": "Sets both the Bot Name and Subdomain to attach to hosted zone"
     },
     "SSHSecurityGroup" : {
       "Description" : "Select Security Group for SSH Access",
@@ -26,6 +26,18 @@
       "Description" : "Choose VPC to use",
       "Type" : "AWS::EC2::VPC::Id",
       "Default": ""
+    },
+    "Daemon": {
+      "Description" : "Choose which daemon controller you wish to use",
+      "Type" : "String",
+      "Default": "runit",
+      "AllowedValues": ["runit", "supervisor"]
+    },
+    "Environment": {
+      "Description" : "Choose which environment you want to enable for Letsencrypt Certs",
+      "Type" : "String",
+      "Default": "production",
+      "AllowedValues": ["production", "stage"]
     },
     "ENVSlackToken": {
      "Description" : "Enter Slack HUBOT API Token",
@@ -74,6 +86,21 @@
       "Description" : "Enter URL for User Data script",
       "Type": "String",
       "Default": "https://raw.githubusercontent.com/HearstAT/cfn-incident-bot/master/userdata.sh"
+    },
+    "Cookbook": {
+      "Description" : "Enter Cookbook Name",
+      "Type": "String",
+      "Default": "incident_bot"
+    },
+    "CookbookGit": {
+      "Description" : "Enter HTTPS Git Clone URL for Cookbook",
+      "Type": "String",
+      "Default": "https://github.com/HearstAT/cookbook-incident-bot.git"
+    },
+    "CookbookGitBranch": {
+      "Description" : "Enter Git Branch",
+      "Type": "String",
+      "Default": "master"
     },
     "Subnet": {
       "Description" : "Choose Subnet",
@@ -125,6 +152,59 @@
         "ConstraintDescription": "must be a valid EC2 instance type."
     }
    },
+  "Metadata" : {
+    "AWS::CloudFormation::Interface" : {
+      "ParameterGroups" : [
+          {
+              "Label" : {"default": "Instance & Network Configuration"},
+              "Parameters" : ["InstanceType", "KeyName", "VPC", "SSHSecurityGroup", "Subnet", "HostedZone"]
+          },
+          {
+              "Label" : {"default": "Slack Configuration"},
+              "Parameters" : ["ENVSlackToken"]
+          },
+          {
+              "Label" : {"default": "Pagerduty Configuration"},
+              "Parameters" : ["ENVPagerDutySubDomain", "ENVPagerDutyUserID", "ENVPagerDutyAPIKey", "ENVPagerDutyServiceKey", "ENVPagerDutyRoom", "ENVPagerDutyServices"]
+          },
+          {
+              "Label" : {"default": "Bot Configuration"},
+              "Parameters" : ["BotName", "Daemon"]
+          },
+          {
+              "Label" : {"default": "External Build Items"},
+              "Parameters" : ["Cookbook", "CookbookGit", "CookbookGitBranch", "UserDataScript"]
+          },
+          {
+              "Label" : {"default": "Letsencrypt Configuration (SSL)"},
+              "Parameters" : ["Environment", "ContactEmail"]
+          }
+      ],
+      "ParameterLabels" : {
+        "InstanceType": {"default": "Pick a Server Size/Flavor:"},
+        "KeyName": {"default": "Pick a default Key Pair for Access:"},
+        "VPC": {"default": "Pick VPC to Build Instance In:"},
+        "SSHSecurityGroup": {"default": "Pick Security Group for SSH Access:"},
+        "Subnet": {"default": "Pick Subnet to Build Instance In:"},
+        "HostedZone": {"default": "Enter Route53 Domain:"},
+        "ENVSlackToken": {"default": "Enter Slack API Token:"},
+        "ENVPagerDutyAPIKey": {"default": "Enter Pager Duty API Key:"},
+        "ENVPagerDutyServiceKey": {"default": "Enter Service API Key:"},
+        "ENVPagerDutySubDomain": {"default": "Enter Pager Duty Subdomain:"},
+        "ENVPagerDutyUserID": {"default": "Enter Pager Duty User ID:"},
+        "ENVPagerDutyRoom": {"default": "Enter Slack Room for Pager Duty Alerts:"},
+        "ENVPagerDutyServices": {"default": "Enter Pager Duty Services (For Restriction):"},
+        "BotName": {"default": "Enter name for Bot:"},
+        "Daemon": {"default": "Pick Bot Service Daemon:"},
+        "Cookbook": {"default": "Enter Cookbook Name (If different):"},
+        "CookbookGit": {"default": "Enter Cookbook Git Clone URL (If different):"},
+        "CookbookBranch": {"default": "Enter Cookbook Git Branch to use (If different):"},
+        "UserDataScript": {"default": "Enter User Data Script URL (If different):"},
+        "Environment": {"default": "Pick Cert Type:"},
+        "ContactEmail": {"default": "Enter Email for Cert Notices:"}
+      }
+    }
+  },
    "Mappings" : {
      "AWSInstanceType2Arch" : {
        "t2.nano"     : { "Arch" : "HVM64"  },
@@ -195,40 +275,61 @@
       }
   },
   "Resources": {
-    "IncidentBotUser" : {
-      "Type" : "AWS::IAM::User",
-      "Properties" : {
-        "Path": "/",
-        "Policies": [{
-          "PolicyName": "incidentbot-get",
-          "PolicyDocument": { "Statement":[{
-            "Effect":"Allow",
-            "Action": [
-              "s3:GetObject",
-              "s3:Put",
-              "s3:PutObject",
-              "s3:PutObjectAcl",
-              "s3:List*"
-            ],
-            "Resource":"*"
-            }]}
-          }]
-        }
-      },
-      "HostKeys" : {
-        "Type" : "AWS::IAM::AccessKey",
+     "BotBucket" : {
+        "Type" : "AWS::S3::Bucket",
+        "DeletionPolicy" : "Retain",
         "Properties" : {
-          "UserName" : {"Ref": "IncidentBotUser"}
+            "AccessControl" : "Private"
+        }
+     },
+     "BotRole": {
+        "Type": "AWS::IAM::Role",
+        "Properties": {
+           "AssumeRolePolicyDocument": {
+              "Version" : "2012-10-17",
+              "Statement": [ {
+                 "Effect": "Allow",
+                 "Principal": {
+                    "Service": [ "ec2.amazonaws.com" ]
+                 },
+                 "Action": [ "sts:AssumeRole" ]
+              } ]
+           },
+           "Path": "/"
+        }
+     },
+     "RolePolicies": {
+        "Type": "AWS::IAM::Policy",
+        "Properties": {
+          "PolicyName": "bot-s3",
+          "PolicyDocument": {
+            "Version" : "2012-10-17",
+            "Statement":[
+            {
+                "Effect":"Allow",
+                "Action": [ "s3:*" ],
+                "Resource": [ { "Fn::Join" : [ "", [ "arn:aws:s3:::", { "Ref" : "BotBucket" }, "/" ] ] },
+                              { "Fn::Join" : [ "", [ "arn:aws:s3:::", { "Ref" : "BotBucket" }, "/*" ] ] } ]
+            },
+            {
+                "Effect":"Allow",
+                "Action": [ "s3:List*" ],
+                "Resource": "arn:aws:s3:::*"
+            } ]
+          },
+          "Roles": [ { "Ref": "BotRole" } ]
       }
+     },
+     "BotInstanceProfile": {
+        "Type": "AWS::IAM::InstanceProfile",
+        "Properties": {
+           "Path": "/",
+           "Roles": [ {
+              "Ref": "BotRole"
+           } ]
+        }
     },
-    "BotBucket" : {
-      "Type" : "AWS::S3::Bucket",
-      "DeletionPolicy" : "Retain",
-      "Properties" : {
-        "AccessControl" : "Private"
-      }
-    },
-    "IncidentBotSecurityGroup" : {
+    "BotSecurityGroup" : {
       "Type" : "AWS::EC2::SecurityGroup",
       "Properties" : {
         "GroupDescription" : "Setup Ingress/Egress for Incident Bot",
@@ -240,33 +341,34 @@
            { "IpProtocol" : "tcp", "FromPort" : "80",  "ToPort" : "80",  "CidrIp" : "0.0.0.0/0"} ,
            { "IpProtocol" : "tcp", "FromPort" : "443", "ToPort" : "443", "CidrIp" : "0.0.0.0/0"} ],
         "Tags" : [
-           { "Key" : "Name", "Value" : "IncidentBot-Security-Group" }
+           { "Key" : "Name", "Value" : "Bot-Security-Group" }
         ]
       }
     },
     "ENI" : {
       "Type" : "AWS::EC2::NetworkInterface",
       "Properties" : {
-        "Tags": [ { "Key":"Name", "Value":"IncidentBot ENI" } ],
-        "Description": "Network Adapter for IncidentBot.",
+        "Tags": [ { "Key":"Name", "Value":"Bot ENI" } ],
+        "Description": "Network Adapter for Incident Bot.",
         "SourceDestCheck": "false",
         "GroupSet": [
-          { "Ref": "IncidentBotSecurityGroup" },
+          { "Ref": "BotSecurityGroup" },
           { "Ref": "SSHSecurityGroup" }
         ],
         "SubnetId": { "Ref": "Subnet" }
      }
     },
-    "IncidentBotInstance": {
+    "BotInstance": {
       "Type": "AWS::EC2::Instance",
       "Properties": {
+        "IamInstanceProfile": { "Ref": "BotInstanceProfile" },
         "DisableApiTermination": "false",
         "InstanceInitiatedShutdownBehavior": "stop",
         "InstanceType": {"Ref": "InstanceType"},
         "ImageId" : { "Fn::FindInMap" : [ "AWSRegionArch2AMI", { "Ref" : "AWS::Region" },
                           { "Fn::FindInMap" : [ "AWSInstanceType2Arch", { "Ref" : "InstanceType" }, "Arch" ] } ] },
         "KeyName": { "Ref": "KeyName" },
-        "Tags": [ { "Key": "Name", "Value": "IncidentBot-Bot" } ],
+        "Tags": [ { "Key": "Name", "Value": "Bot-Bot" } ],
         "NetworkInterfaces" : [ {"NetworkInterfaceId" : {"Ref" : "ENI"}, "DeviceIndex" : 0 } ],
         "BlockDeviceMappings": [
           {
@@ -290,14 +392,15 @@
                 "  exit 1\n",
                 "}\n",
                 "export -f error_exit\n",
-                "mkdir -p /user-init/ \n",
-                "curl -Sl ", { "Ref" : "UserDataScript" }," -o /user-init/userdata.sh\n",
-                "chmod +x /user-init/userdata.sh \n",
+                "UDSCRIPT='/tmp/userdata.sh'\n",
+                "curl -Sl ", { "Ref" : "UserDataScript" }," -o ${UDSCRIPT}\n",
+                "chmod +x ${UDSCRIPT} \n",
+                "export IAM_ROLE=", {"Ref" : "BotRole" } ," \n ",
                 "export REGION=", {"Ref" : "AWS::Region" } ," \n ",
-                "export ACCESS_KEY=", {"Ref" : "HostKeys" } ," \n ",
-                "export SECRET_KEY=", {"Fn::GetAtt" : [ "HostKeys", "SecretAccessKey" ]} ," \n ",
                 "export BUCKET=", { "Ref" : "BotBucket" },"\n",
                 "export DOMAIN=", { "Ref" : "HostedZone" },"\n",
+                "export DAEMON=", { "Ref" : "Daemon" },"\n",
+                "export ENVIRONMENT=", { "Ref" : "Environment" },"\n",
                 "export SLACK_TOKEN=", { "Ref" : "ENVSlackToken" },"\n",
                 "export PAGERDUTY_API_KEY=", { "Ref" : "ENVPagerDutyAPIKey" },"\n",
                 "export PAGERDUTY_SERVICE_API_KEY=", { "Ref" : "ENVPagerDutyServiceKey" },"\n",
@@ -305,9 +408,14 @@
                 "export PAGERDUTY_USER_ID=", { "Ref" : "ENVPagerDutyUserID" },"\n",
                 "export PAGERDUTY_ROOM=", { "Ref" : "ENVPagerDutyRoom" },"\n",
                 "export PAGERDUTY_SERVICES=", { "Ref" : "ENVPagerDutyServices" },"\n",
-                "export EMAIL=", { "Ref" : "ContactEmail" },"\n",
-                "export HOSTNAME=", { "Fn::Join" : [ "", [ { "Ref" : "Subdomain" }, ".", { "Ref" : "HostedZone" } ] ] } ,"\n",
-                "/user-init/userdata.sh\n",
+                "export LE_EMAIL=", { "Ref" : "ContactEmail" },"\n",
+                "export COOKBOOK=", { "Ref" : "Cookbook" },"\n",
+                "export COOKBOOK_GIT=", { "Ref" : "CookbookGit" },"\n",
+                "export COOKBOOK_BRANCH=", { "Ref" : "CookbookGitBranch" },"\n",
+                "export BOT_NAME=", { "Ref" : "BotName" },"\n",
+                "export HOSTNAME=", { "Fn::Join" : [ "", [ { "Ref" : "BotName" }, ".", { "Ref" : "HostedZone" } ] ] } ,"\n",
+                "${UDSCRIPT} || error_exit 'User Data Script failed'\n",
+                "rm -f ${UDSCRIPT}\n",
                 "# All is well so signal success and let CF know wait function is complete\n",
                 "/usr/local/bin/cfn-signal -e 0 -r \"Server setup complete\" '", { "Ref" : "BotWaitHandle" }, "'\n"
               ]
@@ -316,23 +424,23 @@
         }
       }
     },
-    "IncidentBotEIP": {
+    "BotEIP": {
       "Type": "AWS::EC2::EIP",
       "Properties": {
-        "InstanceId": { "Ref": "IncidentBotInstance" },
+        "InstanceId": { "Ref": "BotInstance" },
         "Domain": "vpc"
       }
     },
-    "IncidentBotDNS" : {
+    "BotDNS" : {
       "Type" : "AWS::Route53::RecordSet",
       "Properties" : {
         "HostedZoneName": { "Fn::Join" : [ "",[ { "Ref" : "HostedZone" } ,"." ] ] },
-        "Comment" : "DNS name for IncidentBot Bot",
-        "Name" : { "Fn::Join" : [ "", [ { "Ref" : "Subdomain" }, ".", { "Ref" : "HostedZone" }, "." ] ] },
+        "Comment" : "DNS name for Bot Bot",
+        "Name" : { "Fn::Join" : [ "", [ { "Ref" : "BotName" }, ".", { "Ref" : "HostedZone" }, "." ] ] },
         "Type" : "A",
         "TTL" : "60",
         "ResourceRecords" : [
-           { "Ref": "IncidentBotEIP" }
+           { "Ref": "BotEIP" }
         ]
       }
     },
@@ -341,7 +449,7 @@
    },
    "WaitCondition" : {
      "Type" : "AWS::CloudFormation::WaitCondition",
-     "DependsOn" : "IncidentBotInstance",
+     "DependsOn" : "BotInstance",
      "Properties" : {
          "Handle" : { "Ref" : "BotWaitHandle" },
          "Timeout" : "900"
@@ -349,9 +457,13 @@
     }
   },
   "Outputs": {
-    "IncidentBotEIP": {
-      "Description": "EIP for IncidentBot Instace.",
-      "Value": { "Ref": "IncidentBotEIP" }
+    "BotEIP": {
+      "Description": "EIP for Incident Bot Instance.",
+      "Value": { "Ref": "BotEIP" }
+    },
+    "BotEndpoint": {
+      "Description": "Endpoint for the Incident Bot Pagerduty Webhook.",
+      "Value": { "Fn::Join" : [ "", [ { "Ref" : "BotName" }, ".", { "Ref" : "HostedZone" }, "/pagerduty" ] ] }
     }
   }
 }

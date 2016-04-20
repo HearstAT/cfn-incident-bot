@@ -13,7 +13,7 @@ You will need to generate a slack token for hubot.
 2. Choose a bot username, this is what you will call to the bot in rooms as (e.g.; @hubot help)
 3. Find the API Token section (the token will start with `xoxb-`)
 
-## Pagerduty
+## Pagerduty Configuration
 You will need to acquire the following items (per the [hubot-pager-me](https://github.com/hubot-scripts/hubot-pager-me) project)
 
 * PAGERDUTY SUBDOMAIN - Your account subdomain (i.e.; $sudomain from $subdomain.pagerduty.com)
@@ -32,6 +32,7 @@ These are the things you will need in AWS prior to running the CFN Template
 * VPC (There should be a default, unless you want a new one)
 * SSH Security Group; just something that allows you port 22 via TCP from your IP. Must also be a part of the VPC chose previously
 * Subnet, any will do as long as it belongs to the VPC and is routed to an Internet Gateway eventually
+* Account with the following capabilities: [AWS::IAM::InstanceProfile, AWS::IAM::Policy, AWS::IAM::Role]
 
 # Usage
 
@@ -43,3 +44,18 @@ These are the things you will need in AWS prior to running the CFN Template
 * Choose whatever advanced options you choose (none are required); click next
 * Check the `I acknowledge that this template might cause AWS CloudFormation to create IAM resources.` portion
 * Click Create
+
+
+# Troubleshooting
+Always check the log locations first!
+
+* User Data Script Log: /var/log/user-data.log
+* Bot Log Location: /var/log/bot/current
+* Redis Log Location (default): /var/log/redis/redis-server.log
+
+## Webhook Endpoint
+Endpoint Issues specifics to the Webhook/Http listener
+
+* Certificate Shows invalid
+    * Nginx may have not restarted after generating the real cert, restart nginx
+    * note: Service may show down, but `ps -ef | grep nginx` may return rouge processes that need to be killed

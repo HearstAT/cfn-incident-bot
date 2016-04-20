@@ -2,13 +2,32 @@
 
 #### UserData Incident Bot Helper Script
 ### Script Params, exported in Cloudformation
-# ${REGION} == AWS::Region
-# ${ACCESS_KEY} == HostKeys
-# ${SECRET_KEY} == {"Fn::GetAtt" : [ "HostKeys", "SecretAccessKey" ]}
+# ${IAM_ROLE} == BotRole
+# ${REGION} = Region
+# ${BUCKET} = BotBucket
+# ${DOMAIN} = HostedZone
+# ${DAEMON} = Daemon
+# ${ENVIRONMENT} = Environment
+# ${SLACK_TOKEN} = ENVSlackToken
+# ${PAGERDUTY_API_KEY} = ENVPagerDutyAPIKey
+# ${PAGERDUTY_SERVICE_API_KEY} = ENVPagerDutyServiceKey
+# ${PAGERDUTY_SUBDOMAIN} = ENVPagerDutySubDomain
+# ${PAGERDUTY_USER_ID} = ENVPagerDutyUserID
+# ${PAGERDUTY_ROOM} = ENVPagerDutyRoom
+# ${PAGERDUTY_SERVICES} = ENVPagerDutyServices
+# ${LE_EMAIL} = ContactEmail
+# ${BOT_NAME} = BotName (Acts as both botname and subdomain)
+# ${COOKBOOK} = Cookbook
+# ${COOKBOOK_GIT} = CookbookGit
 # ${HOSTNAME} == Nodename or Server URL
 ###
 
 exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
+
+S3DIR='/opt/bot-s3'
+CHEFDIR='/var/chef/cookbooks'
+CHEFS3='/opt/chefs3' # only needed for when not using chef-zero
+ZERO_ENABLED='true' # Locked to true for now
 
 # Install S3FS Dependencies
 sudo apt-get install -y automake autotools-dev g++ git libcurl4-gnutls-dev libfuse-dev libssl-dev libxml2-dev make pkg-config
@@ -25,117 +44,150 @@ if [ ! -f "/usr/local/bin/s3fs" ]; then
   cd /tmp
   git clone https://github.com/s3fs-fuse/s3fs-fuse.git || error_exit 'Failed to clone s3fs-fuse'
   cd s3fs-fuse
-  ./autogen.sh
-  ./configure
-  make
-  sudo make install || error_exit 'Failed to make s3fs-fuse'
+  ./autogen.sh || error_exit 'Failed to run autogen for s3fs-fuse'
+  ./configure || error_exit 'Failed to run configure for s3fs-fuse'
+  make || error_exit 'Failed to make s3fs-fuse'
+  sudo make install || error_exit 'Failed run make-install s3fs-fuse'
 fi
-
-# Set S3FS Credentials
-echo ${ACCESS_KEY}:${SECRET_KEY} > /etc/passwd-s3fs || error_exit 'Failed to set s3fs-fuse credentials'
-chmod 600 /etc/passwd-s3fs
 
 # Create S3FS Mount Directory
-if [ ! -d "/opt/redis" ]; then
-  mkdir /opt/redis
+if [ ! -d "${S3DIR}" ]; then
+  mkdir ${S3DIR}
 fi
-# Mount S3 Bucket to Directory
-s3fs -o allow_other -o umask=0002 -o passwd_file=/etc/passwd-s3fs ${BUCKET} /opt/redis || error_exit 'Failed to mount s3fs'
 
-# Add chef repo
-curl -s https://packagecloud.io/install/repositories/chef/stable/script.deb.sh | bash
+# Mount S3 Bucket to Directory
+s3fs -o allow_other -o umask=000 -o use_cache=/tmp -o iam_role=${IAM_ROLE} -o endpoint=${REGION} ${BUCKET} ${S3DIR} || error_exit 'Failed to mount s3fs'
+
+echo -e "${BUCKET} ${S3DIR} fuse.s3fs rw,_netdev,allow_other,umask=0022,use_cache=/tmp,iam_role=${IAM_ROLE},endpoint=${REGION},retries=5,multireq_max=5 0 0" >> /etc/fstab || error_exit 'Failed to add mount info to fstab'
+
+if [ ${ZERO_ENABLED} == 'false' ]; then
+    echo 'nothing to see here'
+    # Placeholder for code to acquire validation pem
+fi
 
 # Install cfn bootstraping tools
-easy_install https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz
-
-# Install awscli
-pip install awscli
+easy_install https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz || error_exit 'Failed to install CFN Bootstrap Tools'
 
 # Set hostname
 hostname ${HOSTNAME} || error_exit 'Failed to set hostname'
 echo ${HOSTNAME} > /etc/hostname || error_exit 'Failed to set hostname'
 
-# Run aws config
-aws configure set default.region ${REGION}
-aws configure set aws_access_key_id ${ACCESS_KEY}
-aws configure set aws_secret_access_key ${SECRET_KEY}
-
-CHEFDIR=/var/chef/cookbooks
-COOKBOOK='incident_bot'
+mkdir -p /etc/chef/ohai/hints || error_exit 'Failed to create ohai folder'
+touch /etc/chef/ohai/hints/ec2.json || error_exit 'Failed to create ec2 hint file'
+touch /etc/chef/ohai/hints/iam.json || error_exit 'Failed to create iam hint file'
 
 # Add chef repo
-curl -s https://packagecloud.io/install/repositories/chef/stable/script.deb.sh | bash
-apt-get update
+curl -s https://packagecloud.io/install/repositories/chef/stable/script.deb.sh | bash || error_exit 'Failed to add chef repo'
+apt-get update || error_exit 'Failed to run apt-get update'
 
 # setup cookbooks directory
 if [ ! -d ${CHEFDIR} ]; then
   mkdir -p ${CHEFDIR}
 fi
-sudo chmod -R 777 /var/chef/cookbooks
 
-# Copy over the cookbooks
-CDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+sudo chmod -R 777 ${CHEFDIR}
 
 rm -f ${CHEFDIR}/${COOKBOOK}
 
 # Install Chef
 apt-get install -y chefdk || error_exit 'Failed to install chef'
 
-cat > "/var/chef/cookbooks/first-boot.json" << EOF
+
+# Setup Citadel Items
+mkdir -p ${S3DIR}/pagerduty ${S3DIR}/slack ${S3DIR}/aws ${S3DIR}/redis
+
+set +x
+
+## Pagerduty
+echo "${PAGERDUTY_API_KEY}" >> ${S3DIR}/pagerduty/api_key
+echo "${PAGERDUTY_SERVICE_API_KEY}" >> ${S3DIR}/pagerduty/service_key
+echo "${PAGERDUTY_USER_ID}" >> ${S3DIR}/pagerduty/user_id
+echo "${PAGERDUTY_API_KEY}" >> ${S3DIR}/pagerduty/
+
+## Slack
+echo "${SLACK_TOKEN}" >> ${S3DIR}/slack/api_key
+
+set -x
+
+if [ ${ENVIRONMENT} == 'production' ]; then
+    LE_ENDPOINT='https://acme-v01.api.letsencrypt.org'
+else
+    LE_ENDPOINT='https://acme-staging.api.letsencrypt.org'
+fi
+
+
+if [ ${ZERO_ENABLED} == 'true' ]; then
+    RUN_TYPE='recipe'
+    RUN_ITEM=${COOKBOOK}
+else
+    RUN_TYPE='role'
+    RUN_ITEM=${ROLE}
+fi
+
+# Create json for CFN Params to Attributes and create local role file
+cat > "${CHEFDIR}/cfn.json" << EOF
 {
-  "${COOKBOOK}": {
-    "aws": {
-      "redis_bucket": "${BUCKET}",
-      "secret_key": "${SECRET_KEY}",
-      "access_key": "${ACCESS_KEY}",
-      "domain": "${DOMAIN}"
+    "citadel": {
+        "bucket": "${BUCKET}"
     },
-    "name": "devbot",
-    "adapter": "slack",
-    "git_source": "https://github.com/github/hubot.git",
-    "version": "2.18.0",
-    "user": "hubot",
-    "group": "hubot",
-    "daemon": "runit",
-    "config": {
-        "HUBOT_SLACK_TOKEN": "${SLACK_TOKEN}",
-        "HUBOT_PAGERDUTY_API_KEY": "${PAGERDUTY_API_KEY}",
-        "HUBOT_PAGERDUTY_SERVICE_API_KEY": "${PAGERDUTY_SERVICE_API_KEY}",
-        "HUBOT_PAGERDUTY_SUBDOMAIN": "${PAGERDUTY_SUBDOMAIN}",
-        "HUBOT_PAGERDUTY_USER_ID": "${PAGERDUTY_USER_ID}",
-        "HUBOT_PAGERDUTY_ROOM": "${PAGERDUTY_ROOM}",
-        "HUBOT_PAGERDUTY_ENDPOINT": "/pagerduty",
-        "HUBOT_PAGERDUTY_SERVICES": "${PAGERDUTY_SERVICES}"
-    },
-    "external_scripts": [
-      "hubot-incident",
-      "hubot-pager-me",
-      "hubot-diagnostics",
-      "hubot-help",
-      "hubot-redis-brain"
-    ],
-    "letsencrypt": {
-      "contact": "mailto:${EMAIL}"
-    }
-  },
-  "run_list": [
-    "recipe[${COOKBOOK}]"
-  ]
+    "${COOKBOOK}": {
+        "aws": {
+            "domain": "${DOMAIN}"
+        },
+        "redis": {
+            "dir": "${S3DIR}/redis"
+        },
+        "name": "${BOT_NAME}",
+        "adapter": "slack",
+        "git_source": "https://github.com/github/hubot.git",
+        "version": "2.18.0",
+        "daemon": "${DAEMON}",
+        "config": {
+            "HUBOT_PAGERDUTY_SUBDOMAIN": "${PAGERDUTY_SUBDOMAIN}",
+            "HUBOT_PAGERDUTY_ROOM": "${PAGERDUTY_ROOM}",
+            "HUBOT_PAGERDUTY_ENDPOINT": "/pagerduty",
+            "HUBOT_PAGERDUTY_SERVICES": "${PAGERDUTY_SERVICES}"
+        },
+        "letsencrypt": {
+            "endpoint": "${LE_ENDPOINT}",
+            "contact": "mailto:${LE_EMAIL}"
+        }
+      },
+    "run_list": [
+        "${RUN_TYPE}[${RUN_ITEM}]"
+    ]
 }
 EOF
 
 cat > "${CHEFDIR}/Berksfile" <<EOF
 source 'https://supermarket.chef.io'
-cookbook "${COOKBOOK}", git: 'https://github.com/HearstAT/cookbook-incident-bot.git'
+cookbook "${COOKBOOK}", git: '${COOKBOOK_GIT}', branch: '${COOKBOOK_BRANCH}'
 EOF
 
 # Install dependencies
-sudo su -l -c "cd ${CHEFDIR} && export BERKSHELF_PATH=${CHEFDIR} && berks vendor" || error_exit 'Failed to run berks vendor'
+if [ ${ZERO_ENABLED} == 'true' ]; then
+    sudo su -l -c "cd ${CHEFDIR} && export BERKSHELF_PATH=${CHEFDIR} && berks vendor" || error_exit 'Failed to run berks vendor'
+else
+    sudo su -l -c "berks install && berks upload" || error_exit 'Failed to run berks install'
+fi
+# Create client.rb
+mkdir -p /etc/chef
 
-# create client.rb file so that Chef client can find its dependant cookbooks
-cat > "/var/chef/cookbooks/client.rb" <<EOF
+if [ ${ZERO_ENABLED} == 'true' ]; then
+cat > "/etc/chef/client.rb" <<EOF
 cookbook_path "${CHEFDIR}/berks-cookbooks"
+json_attribs "${CHEFDIR}/cfn.json"
+chef_zero.enabled
+local_mode true
 EOF
+else
+cat > "/etc/chef/client.rb" <<EOF
+json_attribs "${CHEFDIR}/cfn.json"
+node_name "${BOT_NAME}-$(curl -sS http://169.254.169.254/latest/meta-data/instance-id)"
+validation_client_name "${CHEFGROUP}-validator"
+validation_key "${CHEFS3}/valdiation.pem"
+EOF
+fi
 
 # Run Chef
-sudo su -l -c 'chef-client -z -c "/var/chef/cookbooks/client.rb" -j "/var/chef/cookbooks/first-boot.json"' || error_exit 'Failed to run chef-client'
+sudo su -l -c 'chef-client' || error_exit 'Failed to run chef-client'

@@ -9,9 +9,10 @@ These are things you will need to acquire in order to run the CFN Template in AW
 ## Slack
 You will need to generate a slack token for hubot.
 
-1. Go to https://$yourteam.slack.com/services/new/hubot and create a new hubot integration
-2. Choose a bot username, this is what you will call to the bot in rooms as (e.g.; @hubot help)
-3. Find the API Token section (the token will start with `xoxb-`)
+1. [Hubot Slack App](https://slack.com/apps/A0F7XDU93-hubot)
+2. Go to https://$yourteam.slack.com/services/new/hubot and create a new hubot integration
+3. Choose a bot username, this is what you will call to the bot in rooms as (e.g.; @hubot help)
+4. Find the API Token section (the token will start with `xoxb-`)
 
 ## Pagerduty Configuration
 You will need to acquire the following items (per the [hubot-pager-me](https://github.com/hubot-scripts/hubot-pager-me) project)
@@ -38,7 +39,7 @@ These are the things you will need in AWS prior to running the CFN Template
 
 * You will need to clone this repo or at least download the [incident-bot.json](incident-bot.json) to your machine (or alternatively upload to S3)
 * Go to https://console.aws.amazon.com/cloudformation/
-* Choose `Create Stack`
+* Choose `Create Stack` or `Create New Stack`
 * Choose `Upload a template to Amazon S3` (or alternatively `Specify an Amazon S3 template URL` if uploaded to S3)
 * Fill out the Parameters with the items from the [Prerequisite](#prerequisites) section; click next
 * Choose whatever advanced options you choose (none are required); click next

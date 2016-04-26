@@ -144,8 +144,8 @@ cat > "${CHEFDIR}/cfn.json" << EOF
         "daemon": "${DAEMON}",
         "config": {
             "HUBOT_PAGERDUTY_SUBDOMAIN": "${PAGERDUTY_SUBDOMAIN}",
-            "HUBOT_PAGERDUTY_ROOM": "${PAGERDUTY_ROOM}",
-            "HUBOT_PAGERDUTY_ENDPOINT": "/pagerduty",
+            "HUBOT_INCIDENT_PAGERDUTY_ROOM": "${PAGERDUTY_ROOM}",
+            "HUBOT_INCIDENT_PAGERDUTY_ENDPOINT": "/incident",
             "HUBOT_PAGERDUTY_SERVICES": "${PAGERDUTY_SERVICES}"
         },
         "letsencrypt": {

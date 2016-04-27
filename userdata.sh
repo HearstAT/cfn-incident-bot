@@ -102,7 +102,6 @@ set +x
 echo "${PAGERDUTY_API_KEY}" >> ${S3DIR}/pagerduty/api_key
 echo "${PAGERDUTY_SERVICE_API_KEY}" >> ${S3DIR}/pagerduty/service_key
 echo "${PAGERDUTY_USER_ID}" >> ${S3DIR}/pagerduty/user_id
-echo "${PAGERDUTY_API_KEY}" >> ${S3DIR}/pagerduty/
 
 ## Slack
 echo "${SLACK_TOKEN}" >> ${S3DIR}/slack/api_key

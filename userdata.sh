@@ -153,6 +153,9 @@ cat > "${CHEFDIR}/cfn.json" << EOF
 }
 EOF
 
+# Install berks
+/opt/chef/embedded/bin/gem install berkshelf || error_exit 'failed to install berkshelf'
+
 cat > "${CHEFDIR}/Berksfile" <<EOF
 source 'https://supermarket.chef.io'
 cookbook "${COOKBOOK}", git: '${COOKBOOK_GIT}', branch: '${COOKBOOK_BRANCH}'
@@ -160,10 +163,11 @@ EOF
 
 # Install dependencies
 if [ ${ZERO_ENABLED} == 'true' ]; then
-    sudo su -l -c "cd ${CHEFDIR} && export BERKSHELF_PATH=${CHEFDIR} && berks vendor" || error_exit 'Failed to run berks vendor'
+    sudo su -l -c "cd ${CHEFDIR} && export BERKSHELF_PATH=${CHEFDIR} && /opt/chef/embedded/bin/berks vendor" || error_exit 'Failed to run berks vendor'
 else
-    sudo su -l -c "berks install && berks upload" || error_exit 'Failed to run berks install'
+    sudo su -l -c "/opt/chef/embedded/bin/berks install && /opt/chef/embedded/bin/berks upload" || error_exit 'Failed to run berks install'
 fi
+
 # Create client.rb
 mkdir -p /etc/chef
 

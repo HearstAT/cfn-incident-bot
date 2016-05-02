@@ -56,7 +56,7 @@ These are the things you will need in AWS prior to running the CFN Template
         * Pick Security Group for SSH Access:
         * Pick Subnet to Build Instance In:
         * Enter Route53 Domain:
-    * Slack Configuration (See [AWS](#aws) Section for info)
+    * Slack Configuration (See [AWS](#slack) Section for info)
         * Enter Slack API Token:
         * Enter Slack Room:
     * Pager Duty Configuration (See [Pagerduty](#pagerduty) Section for info)

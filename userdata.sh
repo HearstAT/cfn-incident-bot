@@ -76,9 +76,8 @@ mkdir -p /etc/chef/ohai/hints || error_exit 'Failed to create ohai folder'
 touch /etc/chef/ohai/hints/ec2.json || error_exit 'Failed to create ec2 hint file'
 touch /etc/chef/ohai/hints/iam.json || error_exit 'Failed to create iam hint file'
 
-# Add chef repo
-curl -s https://packagecloud.io/install/repositories/chef/stable/script.deb.sh | bash || error_exit 'Failed to add chef repo'
-apt-get update || error_exit 'Failed to run apt-get update'
+# install chef
+curl -L https://omnitruck.chef.io/install.sh | bash || error_exit 'could no install chef'
 
 # setup cookbooks directory
 if [ ! -d ${CHEFDIR} ]; then
@@ -88,10 +87,6 @@ fi
 sudo chmod -R 777 ${CHEFDIR}
 
 rm -f ${CHEFDIR}/${COOKBOOK}
-
-# Install Chef
-apt-get install -y chefdk || error_exit 'Failed to install chef'
-
 
 # Setup Citadel Items
 mkdir -p ${S3DIR}/pagerduty ${S3DIR}/slack ${S3DIR}/aws ${S3DIR}/redis

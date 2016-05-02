@@ -59,7 +59,7 @@ These are the things you will need in AWS prior to running the CFN Template
     * Slack Configuration (See [AWS](#aws) Section for info)
         * Enter Slack API Token:
         * Enter Slack Room:
-    * Pager Duty Configuration (See [Pagerduty](#pagerduty Section for info)
+    * Pager Duty Configuration (See [Pagerduty](#pagerduty) Section for info)
         * Enter Service API Key:
         * Enter Pager Duty Subdomain:
         * Enter Pager Duty User ID:

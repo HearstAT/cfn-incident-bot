@@ -13,7 +13,7 @@
 # ${PAGERDUTY_SERVICE_API_KEY} = ENVPagerDutyServiceKey
 # ${PAGERDUTY_SUBDOMAIN} = ENVPagerDutySubDomain
 # ${PAGERDUTY_USER_ID} = ENVPagerDutyUserID
-# ${PAGERDUTY_ROOM} = ENVPagerDutyRoom
+# ${INCIDENT_ROOM} = ENVPagerDutyRoom
 # ${PAGERDUTY_SERVICES} = ENVPagerDutyServices
 # ${LE_EMAIL} = ContactEmail
 # ${BOT_NAME} = BotName (Acts as both botname and subdomain)
@@ -138,7 +138,7 @@ cat > "${CHEFDIR}/cfn.json" << EOF
         "daemon": "${DAEMON}",
         "config": {
             "HUBOT_PAGERDUTY_SUBDOMAIN": "${PAGERDUTY_SUBDOMAIN}",
-            "HUBOT_INCIDENT_PAGERDUTY_ROOM": "${PAGERDUTY_ROOM}",
+            "HUBOT_INCIDENT_PAGERDUTY_ROOM": "${INCIDENT_ROOM}",
             "HUBOT_INCIDENT_PAGERDUTY_ENDPOINT": "/incident",
             "HUBOT_PAGERDUTY_SERVICES": "${PAGERDUTY_SERVICES}"
         },

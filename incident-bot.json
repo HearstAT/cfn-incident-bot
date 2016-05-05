@@ -406,7 +406,7 @@
                 "export PAGERDUTY_SERVICE_API_KEY=", { "Ref" : "ENVPagerDutyServiceKey" },"\n",
                 "export PAGERDUTY_SUBDOMAIN=", { "Ref" : "ENVPagerDutySubDomain" },"\n",
                 "export PAGERDUTY_USER_ID=", { "Ref" : "ENVPagerDutyUserID" },"\n",
-                "export HUBOT_INCIDENT_PAGERDUTY_ROOM=", { "Ref" : "ENVPagerDutyRoom" },"\n",
+                "export INCIDENT_ROOM=", { "Ref" : "ENVPagerDutyRoom" },"\n",
                 "export PAGERDUTY_SERVICES=", { "Ref" : "ENVPagerDutyServices" },"\n",
                 "export LE_EMAIL=", { "Ref" : "ContactEmail" },"\n",
                 "export COOKBOOK=", { "Ref" : "Cookbook" },"\n",

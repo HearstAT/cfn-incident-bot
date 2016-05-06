@@ -27,6 +27,12 @@
       "Type" : "AWS::EC2::VPC::Id",
       "Default": ""
     },
+    "ChefChoice": {
+      "Description" : "Choose Between Chef-Zero and Chef-Server",
+      "Type" : "String",
+      "Default": "chef-zero",
+      "AllowedValues": ["chef-zero", "chef-server"]
+    },
     "Daemon": {
       "Description" : "Choose which daemon controller you wish to use",
       "Type" : "String",
@@ -400,6 +406,7 @@
                 "export BUCKET=", { "Ref" : "BotBucket" },"\n",
                 "export DOMAIN=", { "Ref" : "HostedZone" },"\n",
                 "export DAEMON=", { "Ref" : "Daemon" },"\n",
+                "export CHEF_CHOICE=", { "Ref" : "ChefChoice" },"\n",
                 "export ENVIRONMENT=", { "Ref" : "Environment" },"\n",
                 "export SLACK_TOKEN=", { "Ref" : "ENVSlackToken" },"\n",
                 "export PAGERDUTY_API_KEY=", { "Ref" : "ENVPagerDutyAPIKey" },"\n",

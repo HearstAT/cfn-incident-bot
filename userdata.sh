@@ -27,7 +27,14 @@ exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
 S3DIR='/opt/bot-s3'
 CHEFDIR='/var/chef/cookbooks'
 CHEFS3='/opt/chefs3' # only needed for when not using chef-zero
-ZERO_ENABLED='true' # Locked to true for now
+
+if [ ${CHEF_CHOICE} == 'chef-server' ]; then
+    ZERO_ENABLED='false'
+elif [ ${CHEF_CHOICE} == 'chef-zero' ]; then
+    ZERO_ENABLED='true'
+else
+    error_exit 'Chef Choice invalid'
+fi
 
 # Install S3FS Dependencies
 sudo apt-get install -y automake autotools-dev g++ git libcurl4-gnutls-dev libfuse-dev libssl-dev libxml2-dev make pkg-config
@@ -94,12 +101,12 @@ mkdir -p ${S3DIR}/pagerduty ${S3DIR}/slack ${S3DIR}/aws ${S3DIR}/redis
 set +x
 
 ## Pagerduty
-echo "${PAGERDUTY_API_KEY}" >> ${S3DIR}/pagerduty/api_key
-echo "${PAGERDUTY_SERVICE_API_KEY}" >> ${S3DIR}/pagerduty/service_key
-echo "${PAGERDUTY_USER_ID}" >> ${S3DIR}/pagerduty/user_id
+echo "${PAGERDUTY_API_KEY}" | tr -d '\\n' >> ${S3DIR}/pagerduty/api_key
+echo "${PAGERDUTY_SERVICE_API_KEY}" | tr -d '\\n' >> ${S3DIR}/pagerduty/service_key
+echo "${PAGERDUTY_USER_ID}" | tr -d '\\n' >> ${S3DIR}/pagerduty/user_id
 
 ## Slack
-echo "${SLACK_TOKEN}" >> ${S3DIR}/slack/api_key
+echo "${SLACK_TOKEN}" | tr -d '\\n' >> ${S3DIR}/slack/api_key
 
 set -x
 
@@ -153,38 +160,50 @@ cat > "${CHEFDIR}/cfn.json" << EOF
 }
 EOF
 
-# Install berks
-/opt/chef/embedded/bin/gem install berkshelf || error_exit 'failed to install berkshelf'
-
-cat > "${CHEFDIR}/Berksfile" <<EOF
-source 'https://supermarket.chef.io'
-cookbook "${COOKBOOK}", git: '${COOKBOOK_GIT}', branch: '${COOKBOOK_BRANCH}'
-EOF
-
-# Install dependencies
-if [ ${ZERO_ENABLED} == 'true' ]; then
-    sudo su -l -c "cd ${CHEFDIR} && export BERKSHELF_PATH=${CHEFDIR} && /opt/chef/embedded/bin/berks vendor" || error_exit 'Failed to run berks vendor'
-else
-    sudo su -l -c "/opt/chef/embedded/bin/berks install && /opt/chef/embedded/bin/berks upload" || error_exit 'Failed to run berks install'
-fi
-
 # Create client.rb
 mkdir -p /etc/chef
 
-if [ ${ZERO_ENABLED} == 'true' ]; then
+if [ ${ZERO_ENABLED} == 'false' ]; then
+    mkdir -p ${CHEF_DIR}/.chef
+cat > "${CHEFDIR}/.chef/knife.rb" <<EOF
+current_dir = File.dirname(__FILE__)
+log_level                :info
+log_location             STDOUT
+node_name                "${BOT_NAME}-$(curl -sS http://169.254.169.254/latest/meta-data/instance-id)"
+validation_client_name   "${CHEFGROUP}-validator"
+validation_key           "${CHEFS3}/validator.pem"
+chef_server_url          "${CHEF_SERVER_URL}/${CHEF_GROUP}"
+cookbook_path            ["#{current_dir}/../cookbooks"]
+EOF
+
+cat > "/etc/chef/client.rb" <<EOF
+json_attribs "${CHEFDIR}/cfn.json"
+node_name "${BOT_NAME}-$(curl -sS http://169.254.169.254/latest/meta-data/instance-id)"
+validation_client_name "${CHEFGROUP}-validator"
+validation_key "${CHEFS3}/validator.pem"
+# Install berks
+/opt/chef/embedded/bin/gem install berkshelf || error_exit 'failed to install berkshelf'
+EOF
+else
 cat > "/etc/chef/client.rb" <<EOF
 cookbook_path "${CHEFDIR}/berks-cookbooks"
 json_attribs "${CHEFDIR}/cfn.json"
 chef_zero.enabled
 local_mode true
 EOF
-else
-cat > "/etc/chef/client.rb" <<EOF
-json_attribs "${CHEFDIR}/cfn.json"
-node_name "${BOT_NAME}-$(curl -sS http://169.254.169.254/latest/meta-data/instance-id)"
-validation_client_name "${CHEFGROUP}-validator"
-validation_key "${CHEFS3}/valdiation.pem"
+fi
+
+cat > "${CHEFDIR}/Berksfile" <<EOF
+source 'https://supermarket.chef.io'
+cookbook "${COOKBOOK}", git: '${COOKBOOK_GIT}', branch: '${COOKBOOK_BRANCH}'
 EOF
+
+
+# Install dependencies
+if [ ${ZERO_ENABLED} == 'true' ]; then
+    sudo su -l -c "cd ${CHEFDIR} && export BERKSHELF_PATH=${CHEFDIR} && /opt/chef/embedded/bin/berks vendor" || error_exit 'Failed to run berks vendor'
+else
+    sudo su -l -c "cd ${CHEFDIR} && /opt/chef/embedded/bin/berks install && /opt/chef/embedded/bin/berks upload" || error_exit 'Failed to run berks install'
 fi
 
 # Run Chef

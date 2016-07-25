@@ -91,6 +91,10 @@ Always check the log locations first!
 * Bot Log Location: /var/log/bot/current
 * Redis Log Location (default): /var/log/redis/redis-server.log
 
+# Environment Variables
+
+When using runit check the contents of the files in `/etc/sv/bot/env` that they are set properly.
+
 ## Webhook Endpoint
 Endpoint Issues specifics to the Webhook/Http listener
 

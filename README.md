@@ -25,8 +25,8 @@ or
 You will need to acquire the following items (per the [hubot-pager-me](https://github.com/hubot-scripts/hubot-pager-me) project)
 
 * PAGERDUTY SUBDOMAIN - Your account subdomain (i.e.; $sudomain from $subdomain.pagerduty.com)
-* PAGERDUTY USER ID - The user id of a PagerDuty user for your bot. You will have to create a API/Bot user within your pagerduty account for this (pagerduty instructions [here](https://support.pagerduty.com/hc/en-us/articles/202828720-Adding-Users)).
-* PAGERDUTY API KEY - Get one from https://$subdomain.pagerduty.com/api_keys; pagerduty instructions [here](https://support.pagerduty.com/hc/en-us/articles/202829310-Generating-an-API-Key)
+* PAGERDUTY USER ID - The user id of a PagerDuty user for your bot. You will have to create a API/Bot user within your pagerduty account for this ([pagerduty instructions](https://support.pagerduty.com/hc/en-us/articles/202828720-Adding-Users)).  NOTE this will be something like `ABC123S` not the email address or user name of the account.
+* PAGERDUTY API KEY - Get one from https://$subdomain.pagerduty.com/api_keys; pagerduty instructions [here](https://support.pagerduty.com/hc/en-us/articles/202829310-Generating-an-API-Key). At the time of this writing [hubot-pager-me](https://github.com/hubot-scripts/hubot-pager-me) uses the V1 API so you will need to create a key of `v1 Legacy` and not `v2 Current`.
 * PAGERDUTY SERVICE_API_KEY - Service API Key from a 'General API Service'. This should be assigned to a dummy escalation policy that doesn't actually notify, as hubot will trigger on this before reassigning it (pagerduty instructions [here](https://support.pagerduty.com/hc/en-us/articles/202830340-Creating-a-Generic-API-Service))
 * PAGERDUTY SERVICES - (optional) Provide a comma separated list of service identifiers (e.g. PFGPBFY) to restrict queries to only those services. Get service id from the url after click on a service (e.g.; https://$subdomain.pagerduty.com/services/PFGPBFY)
 
@@ -62,9 +62,9 @@ These are the things you will need in AWS prior to running the CFN Template
     * Pager Duty Configuration (See [Pagerduty](#pagerduty) Section for info)
         * Enter Service API Key:
         * Enter Pager Duty Subdomain:
-        * Enter Pager Duty User ID:
-        * Enter Slack Room for Pager Duty Alerts:
-        * Enter Pager Duty Services (For Restriction):
+        * Enter Pager Duty User ID: (Ex. `ABC123S`)
+        * Enter Slack Room for Pager Duty Alerts: (NOTE: for public channels the room name is fine. For private channels use the [Slack API Tester](https://api.slack.com/methods/groups.list/test) to find the channel ID that looks something like `ABC123S`)
+        * Enter Pager Duty Services (Optional For Restriction):
     * Bot Configuration
         * Enter name for Bot: (Will not affect the name chosen in slack, but sets local paths for the bot)
         * Pick Bot Service Daemon: (Currently utilizes RunIt and Supervisor, choose which you prefer)
